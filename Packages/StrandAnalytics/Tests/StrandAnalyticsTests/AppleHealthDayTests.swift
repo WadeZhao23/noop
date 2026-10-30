@@ -75,4 +75,20 @@ final class AppleHealthDayTests: XCTestCase {
         var missing = input; missing.values = [:]
         XCTAssertNil(AppleMetricEngine.results(for: missing, history: history).first { $0.key == "recovery" }?.value)
     }
+    func testAdditionalHealthMetricsRetainDaySourceAndStaleState() {
+        let samples = [AppleHealthSample(id: "scale-reading", key: "weight", start: 10, end: 11,
+            source: "Personal scale", sourceID: "scale", isWatch: false, value: 70.25)]
+        let input = AppleHealthDay(day: "2026-10-02", timeZone: "UTC", start: 0, end: 100, updated: 99,
+            values: ["weight": 70.25, "hr": 62.5], samples: samples)
+        let results = AppleMetricEngine.results(for: input, history: [])
+        let weight = results.first { $0.key == "weight" }!
+        XCTAssertEqual(weight.value, 70.25)
+        XCTAssertEqual(weight.sources, ["Personal scale"])
+        XCTAssertEqual(weight.day, input.day)
+        XCTAssertEqual(weight.end, 100)
+        XCTAssertTrue(weight.explanation.contains("最近一次"))
+        XCTAssertEqual(results.first { $0.key == "hr" }?.value, 62.5)
+        XCTAssertEqual(results.first { $0.key == "vo2max" }?.quality, .missing)
+        XCTAssertEqual(AppleMetricEngine.results(for: input, history: [], stale: true).first { $0.key == "weight" }?.quality, .stale)
+    }
 }

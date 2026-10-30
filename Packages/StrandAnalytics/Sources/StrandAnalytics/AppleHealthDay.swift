@@ -200,6 +200,11 @@ public enum AppleMetricEngine {
             add(key, title, unit, input.values[key], ["energy", "steps"].contains(key)
                 ? "HealthKit 当日累计统计；来源明细保留样本标识。" : "HealthKit 当日算术平均。显示保留一位小数，计算保留原始精度；SDNN 不转换为 RMSSD。")
         }
+        for (key, title, unit) in [("hr", "心率", "次/分"), ("vo2max", "心肺适能", "ml/kg/min"), ("weight", "体重", "kg")] {
+            add(key, title, unit, input.values[key], key == "weight"
+                ? "HealthKit 当日最近一次记录。"
+                : "HealthKit 当日算术平均；明细保留实际写入来源。")
+        }
         add("activity", "运动时长", "分钟", input.workouts.isEmpty ? nil : input.workouts.reduce(0) { $0 + $1.minutes },
             "按运动开始日归属，累计已记录运动的实际时长；不等于健身圆环锻炼分钟，不生成综合负荷分。", sources: Array(Set(input.workouts.map(\.source))).sorted())
         return results

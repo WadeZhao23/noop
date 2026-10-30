@@ -1,6 +1,17 @@
 # 9点23 validation — 2026-10-30
 
-## Passed
+## Reference UI update — build 439
+
+- Expanded native screens and public reference mapping: [NINE23_REFERENCE_UI.md](NINE23_REFERENCE_UI.md).
+- Final iOS simulator and development-signed device builds passed, including embedded watchOS and widget targets. macOS shared app build passed.
+- AppleHealthDayTests, WatchRecoveryTests and BehaviorInsightsTests: 37 tests passed, zero failures. The additional raw metric test verifies selected date, source, missing values and stale state. Recovery and sleep scoring formulas are unchanged.
+- macOS IntelligenceWatchRecoveryTests and WidgetSnapshotTests passed again with the expanded metric output.
+- The updated simulator app launched with explicitly labeled synthetic data. Dark and light homepage screenshots were captured; the generated black/white 9:23 icon was visually inspected. Final signature validation and IPA ZIP integrity checks passed.
+- Manual navigation, chart gestures, journal persistence and accessibility-size review for the expanded screens are **pending**: computer-use reports that the Mac is locked. Build success is not an interaction test.
+- Physical installation of **439 is pending**: the previously paired iPhone is currently unavailable. The installed build 438 described below has not been replaced. No uninstall or user-data reset was attempted.
+- The new deliverable is `build/nine23-delivery/reference-439/Nine23-reference-439.ipa`, with signed `Payload/NOOP.app`, icon, screenshots and build metadata beside it. The prior build remains available.
+
+## Previous Apple foundation / build 438 validation
 
 - StrandAnalytics: 2,149 tests, zero failures.
 - WhoopStore: 634 tests, zero failures; the final focused transaction/source-isolation rerun also passed.

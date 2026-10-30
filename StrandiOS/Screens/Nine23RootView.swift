@@ -4,32 +4,51 @@ import Charts
 import StrandDesign
 import StrandAnalytics
 
-/// Apple Watch first navigation. Routes carry a dated metric result, never a generic catalog key.
+/// Reference shell with Apple-only routes that retain the selected metric and calendar day.
 struct Nine23RootView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var watch: WatchSessionBridge
     @EnvironmentObject private var repo: Repository
     @EnvironmentObject private var health: HealthKitBridge
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var date = Date()
     @State private var days: [Nine23Metrics.Day] = []
     @State private var error: String?
-    @State private var trendKey = "sleep"
-    @State private var showAdvanced = false
+    @State private var tab = 0
+    @State private var path: [Nine23Route] = []
+    @State private var sheet: Sheet?
     @State private var recalibrate = false
+    @State private var range = 30
+    @State private var trendKey = "recovery"
+    @AppStorage("nine23.dashboard.metrics") private var dashboardRaw = "sdnn,rhr,steps,energy,resp,spo2"
+    private enum Sheet: String, Identifiable { case calendar, dashboard, settings, device; var id: String { rawValue } }
     private var dayKey: String { AppleHealthDay.dayKey(date) }
     private var selected: Nine23Metrics.Day? { days.first { $0.id == dayKey } }
-
+    private var dashboardKeys: [String] { dashboardRaw.split(separator: ",").map(String.init).filter { Nine23Presentation.dashboardKeys.contains($0) } }
+    private var isDemo: Bool {
+        #if DEBUG
+        CommandLine.arguments.contains("--nine23-demo")
+        #else
+        false
+        #endif
+    }
     var body: some View {
-        TabView {
-            NavigationStack { today.navigationTitle("9点23") }
-                .tabItem { Label("今日", systemImage: "circle.grid.2x2.fill") }
-            NavigationStack { trends.navigationTitle("趋势") }
-                .tabItem { Label("趋势", systemImage: "chart.xyaxis.line") }
-            NavigationStack { profile.navigationTitle("我的") }
-                .tabItem { Label("我的", systemImage: "person.crop.circle") }
+        NavigationStack(path: $path) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Nine23Style.section) {
+                    header
+                    if let message = error ?? health.lastError { Text(message).font(Nine23Style.caption).foregroundStyle(Nine23Style.red) }
+                    if isDemo { Text("演示数据 · 不代表真实健康记录").font(Nine23Style.caption).foregroundStyle(Nine23Style.yellow) }
+                    if tab == 0 { home } else if tab == 1 { healthPage } else if tab == 2 { community } else { more }
+                }.padding(.horizontal, Nine23Style.page).padding(.top, Nine23Style.small).padding(.bottom, Nine23Style.section)
+            }
+            .id(tab)
+            .refreshable { await refresh() }
+            .nine23Screen().toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: Nine23Route.self) { route in destination(route).toolbar(.visible, for: .navigationBar).navigationBarTitleDisplayMode(.inline) }
         }
-        .tint(NoopVisualStyle.mint)
+        .safeAreaInset(edge: .bottom, spacing: 0) { if path.isEmpty { tabBar } }
+        .tint(Nine23Style.text)
         .task {
             #if DEBUG
             try? await Nine23Demo.seed(repo: repo)
@@ -39,250 +58,271 @@ struct Nine23RootView: View {
         .onChange(of: repo.refreshSeq) { _, _ in Task { await load() } }
         .onChange(of: health.lastError) { _, _ in Task { await load(); await publish() } }
         .onChange(of: health.lastSync) { _, _ in Task { await load(); await publish() } }
-        .sheet(isPresented: $showAdvanced) { NavigationStack { SettingsView().toolbar { Button("完成") { showAdvanced = false } } } }
-    }
-
-    private var today: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: NoopVisualStyle.sectionGap) {
-                #if DEBUG
-                if CommandLine.arguments.contains("--nine23-demo") { Text("演示数据 · 不代表真实健康记录").font(StrandFont.caption) }
-                #endif
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: NoopVisualStyle.itemGap) {
-                        Text("跟随身体的节奏").font(StrandFont.title2)
-                        DatePicker("日期", selection: $date, in: ...Date(), displayedComponents: .date).labelsHidden()
+        .sheet(item: $sheet) { item in
+            NavigationStack {
+                Group {
+                    switch item {
+                    case .calendar: Nine23CalendarView(date: $date, days: days)
+                    case .dashboard: dashboardEditor
+                    case .settings: SettingsView()
+                    case .device: devicePage
                     }
-                } else {
-                    HStack {
-                        Text("跟随身体的节奏").font(StrandFont.title2)
-                        Spacer()
-                        DatePicker("日期", selection: $date, in: ...Date(), displayedComponents: .date).labelsHidden()
-                    }
-                }
-                if let error = error ?? health.lastError { Text(error).font(StrandFont.caption).foregroundStyle(StrandPalette.statusCritical) }
-                if health.auth != .authorized && !isDemo { authorization }
-                ForEach(["sleep", "recovery", "activity"], id: \.self) { key in
-                    if let metric = selected?[key] {
-                        NavigationLink { Nine23MetricDetail(metric: metric, input: selected!.input) } label: { domain(metric) }
-                            .buttonStyle(.plain)
-                    } else { emptyDomain(key) }
-                }
-                Text(summary).font(StrandFont.body).foregroundStyle(NoopVisualStyle.secondaryText)
-                VStack(alignment: .leading, spacing: NoopVisualStyle.itemGap) {
-                    Text("当天记录").font(StrandFont.headline)
-                    if let input = selected?.input {
-                        ForEach(Array(input.sleep.enumerated()), id: \.offset) { _, sleep in
-                            Label("\(sleep.isMain ? "主睡眠" : "午睡") · \(Int(sleep.asleepMinutes.rounded())) 分钟", systemImage: "bed.double")
-                                .font(StrandFont.body)
-                        }
-                        ForEach(input.workouts, id: \.id) { workout in
-                            VStack(alignment: .leading) {
-                                Text("\(workout.name) · \(Int(workout.minutes.rounded())) 分钟").font(StrandFont.body)
-                                Text(workout.effort.map { "Apple 努力程度 \(String(format: "%.1f", $0)) / 10" } ?? "未提供 Apple 努力程度")
-                                    .font(StrandFont.caption).foregroundStyle(NoopVisualStyle.secondaryText)
-                            }
-                        }
-                        if input.sleep.isEmpty && input.workouts.isEmpty { Text("当天还没有睡眠或运动记录").font(StrandFont.body) }
-                    } else { Text("同步后查看当天记录").font(StrandFont.body) }
-                }
-                if let updated = selected?.input.updated {
-                    Text("更新于 \(Date(timeIntervalSince1970: updated).formatted(date: .abbreviated, time: .shortened)) · 苹果健康")
-                        .font(StrandFont.caption).foregroundStyle(NoopVisualStyle.tertiaryText)
-                }
-                Button(health.syncing ? "正在同步…" : "刷新这一天") { Task { await refresh() } }
-                    .disabled(health.syncing).buttonStyle(.bordered)
-            }.padding(NoopVisualStyle.pagePadding)
+                }.toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { sheet = nil } } }
+            }.tint(Nine23Style.text)
         }
-        .background(NoopVisualStyle.canvas)
-        .refreshable { await refresh() }
+        .confirmationDialog("重新校准后将从今天积累基线，原始健康记录会保留。", isPresented: $recalibrate, titleVisibility: .visible) {
+            Button("重新建立基线") { Baselines.recalibrateRecoveryBaselines(); Task { await load(); await publish() } }
+        }
     }
-
-    private var isDemo: Bool {
-        #if DEBUG
-        return CommandLine.arguments.contains("--nine23-demo")
-        #else
-        return false
-        #endif
+    private var header: some View {
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: Nine23Style.small) {
+                    HStack { profileButton; Spacer(); deviceButton }
+                    dateControl.frame(maxWidth: .infinity)
+                }
+            } else {
+                HStack(spacing: Nine23Style.small) { profileButton; Spacer(minLength: 0); dateControl; Spacer(minLength: 0); deviceButton }
+            }
+        }
+    }
+    private var profileButton: some View {
+        Button { tab = 3 } label: { Image(systemName: "person.crop.circle").font(Nine23Style.title).frame(width: 44, height: 44) }.accessibilityLabel("个人资料")
+    }
+    private var deviceButton: some View {
+        Button { sheet = .device } label: { Image(systemName: health.syncing ? "arrow.triangle.2.circlepath" : "applewatch").font(Nine23Style.title).frame(width: 44, height: 44) }.accessibilityLabel("Apple Watch 与同步")
+    }
+    private var dateControl: some View {
+        HStack(spacing: 0) {
+                Button { shift(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.accessibilityLabel("前一天")
+                Button { sheet = .calendar } label: { Text(Calendar.current.isDateInToday(date) ? "今天" : date.formatted(.dateTime.month().day())).font(Nine23Style.heading).lineLimit(1).minimumScaleFactor(0.7) }.accessibilityLabel("选择日期，\(dayKey)")
+                Button { shift(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(Calendar.current.isDateInToday(date)).accessibilityLabel("后一天")
+        }.background(Nine23Style.surface, in: Capsule())
+    }
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<4) { index in
+                Button { tab = index } label: {
+                    VStack(spacing: 5) {
+                        Image(systemName: ["house", "heart.text.square", "person.2", "line.3.horizontal"][index]).font(Nine23Style.heading)
+                        Text(["首页", "健康", "社区", "更多"][index]).font(Nine23Style.label)
+                    }.frame(maxWidth: .infinity, minHeight: 44).padding(.vertical, Nine23Style.small)
+                        .foregroundStyle(tab == index ? Nine23Style.text : Nine23Style.secondary)
+                        .background(tab == index ? Nine23Style.raised.opacity(0.5) : .clear)
+                }.buttonStyle(.plain).accessibilityAddTraits(tab == index ? .isSelected : [])
+            }
+        }.background(Nine23Style.surface).overlay(alignment: .top) { Rectangle().fill(Nine23Style.line).frame(height: 0.5) }
+    }
+    private var home: some View {
+        Group {
+            Text("9:23").font(Nine23Style.heading).italic().tracking(4).frame(maxWidth: .infinity)
+            if health.auth != .authorized && !isDemo { authorization }
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Nine23Style.gap)) : AnyLayout(HStackLayout(spacing: Nine23Style.gap))
+            layout {
+                ForEach(["sleep", "recovery", "activity"], id: \.self) { key in
+                    NavigationLink(value: Nine23Route.metric(key, dayKey)) {
+                        Nine23Gauge(key: key, value: key == "sleep" ? selected?[key]?.value.map { $0 / 480 * 100 } : selected?[key]?.value, compact: true)
+                    }.buttonStyle(.plain)
+                }
+            }
+            NavigationLink(value: Nine23Route.coach) {
+                Nine23Card {
+                    HStack { Text(outlookTitle).font(Nine23Style.heading); Spacer(); Image(systemName: "sparkles") }
+                    Text(outlook).font(Nine23Style.body).foregroundStyle(Nine23Style.secondary).multilineTextAlignment(.leading)
+                    HStack { Text("查看今日解读").font(Nine23Style.caption); Spacer(); Image(systemName: "chevron.right") }
+                }
+            }.buttonStyle(.plain)
+            HStack(alignment: .top, spacing: Nine23Style.small) {
+                NavigationLink(value: Nine23Route.monitor(dayKey)) {
+                    Nine23Card { Text("健康监测  ›").font(Nine23Style.label); Label("\(vitalCount) / 5 项", systemImage: "waveform.path.ecg").font(Nine23Style.heading); Text("查看身体指标").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) }
+                }.buttonStyle(.plain)
+                NavigationLink(value: Nine23Route.metric("hr", dayKey)) {
+                    Nine23Card { Text("心率趋势  ›").font(Nine23Style.label); Text(selected?.input.values["hr"].map { "\(Int($0.rounded())) 次/分" } ?? "— 次/分").font(Nine23Style.heading); Text("当日均值 · 非实时").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) }
+                }.buttonStyle(.plain)
+            }
+            Nine23Section(title: "我的一天", caption: date.formatted(.dateTime.weekday(.wide).month().day()))
+            activities
+            NavigationLink(value: Nine23Route.journal(dayKey)) { linkCard("我的日记", subtitle: "记录习惯，观察它们与身体状态的关系", icon: "book.closed") }.buttonStyle(.plain)
+            Nine23Section(title: "我的计划")
+            NavigationLink(value: Nine23Route.plan) { linkCard("今晚的睡眠", subtitle: "安排作息 · 8 小时睡眠目标", icon: "moon.zzz") }.buttonStyle(.plain)
+            Nine23Card {
+                Text("最近一周活动").font(Nine23Style.heading)
+                HStack {
+                    ForEach(weekDays, id: \.self) { key in
+                        let count = days.first { $0.id == key }?.input.workouts.count ?? 0
+                        VStack(spacing: Nine23Style.small) { Text(Nine23Presentation.date(key).formatted(.dateTime.weekday(.narrow))).font(Nine23Style.caption); Image(systemName: count > 0 ? "checkmark.circle.fill" : "circle").foregroundStyle(count > 0 ? Nine23Style.activity : Nine23Style.line) }.frame(maxWidth: .infinity)
+                    }
+                }
+                NavigationLink("查看运动与周趋势", value: Nine23Route.metric("activity", dayKey)).font(Nine23Style.caption)
+            }
+            HStack { Nine23Section(title: "我的指标面板"); Button { sheet = .dashboard } label: { Image(systemName: "slider.horizontal.3").frame(width: 44, height: 44) }.accessibilityLabel("自定义指标面板") }
+            dashboard
+            syncFooter
+        }
+    }
+    private var healthPage: some View {
+        Group {
+            Nine23Section(title: "健康", caption: "更完整地了解你的身体")
+            NavigationLink(value: Nine23Route.metric("hr", dayKey)) {
+                Nine23Card {
+                    HStack { Label("心率", systemImage: "heart.fill").foregroundStyle(Nine23Style.red); Spacer(); Text("当日均值").font(Nine23Style.caption) }
+                    Text(selected?.input.values["hr"].map { "\(Int($0.rounded())) 次/分" } ?? "— 次/分").font(Nine23Style.score)
+                    Nine23HeartChart(samples: selected?.input.samples.filter { $0.key == "hr" } ?? [], zone: selected?.input.timeZone, compact: true)
+                }
+            }.buttonStyle(.plain)
+            NavigationLink(value: Nine23Route.monitor(dayKey)) { linkCard("健康监测", subtitle: "\(vitalCount) / 5 项有记录 · 查看个人变化", icon: "waveform.path.ecg") }.buttonStyle(.plain)
+            ForEach(["sdnn", "rhr", "resp", "spo2", "temperature"], id: \.self) { key in metricTile(key) }
+            Nine23Section(title: "长期健康")
+            ForEach(["vo2max", "weight", "steps"], id: \.self) { key in metricTile(key) }
+            NavigationLink(value: Nine23Route.capabilities) { linkCard("更多健康功能", subtitle: "压力、健康年龄、心电与血压的支持情况", icon: "square.grid.2x2") }.buttonStyle(.plain)
+        }
+    }
+    private var community: some View {
+        Group {
+            Nine23Section(title: "社区", caption: "个人参考版 · 本地档案")
+            Nine23Card {
+                HStack { Image(systemName: "person.crop.circle.fill").font(Nine23Style.score); VStack(alignment: .leading) { Text("我的健康旅程").font(Nine23Style.heading); Text("Apple Watch · 9点23").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) } }
+                Nine23ValueRow(title: "已同步日期", value: "\(days.count)", unit: "天")
+                Nine23ValueRow(title: "记录的运动", value: "\(days.reduce(0) { $0 + $1.input.workouts.count })", unit: "次")
+            }
+            Nine23Section(title: "我的进展")
+            NavigationLink(value: Nine23Route.trends) { linkCard("回看最近 30 天", subtitle: "睡眠、恢复与活动的变化", icon: "chart.bar.xaxis") }.buttonStyle(.plain)
+            NavigationLink(value: Nine23Route.journal(dayKey)) { linkCard("建立日记习惯", subtitle: "从一条真实记录开始", icon: "checkmark.circle") }.buttonStyle(.plain)
+            Nine23Card {
+                Label("团队与排行榜", systemImage: "person.3").font(Nine23Style.heading)
+                Text("当前版本只有你的本地记录，尚未接入社区账号、好友或团队服务。").font(Nine23Style.body).foregroundStyle(Nine23Style.secondary)
+                Link("浏览 WHOOP 社区参考", destination: URL(string: "https://www.community.whoop.com/")!).font(Nine23Style.caption)
+            }
+        }
+    }
+    private var more: some View {
+        Group {
+            Nine23Section(title: "更多", caption: "9点23 · Apple Watch 参考版")
+            NavigationLink(value: Nine23Route.trends) { linkCard("趋势与报告", subtitle: "7 天 / 30 天 / 90 天", icon: "chart.xyaxis.line") }.buttonStyle(.plain)
+            NavigationLink(value: Nine23Route.journal(dayKey)) { linkCard("日记与行为洞察", subtitle: "查看记录和下一天的恢复变化", icon: "book") }.buttonStyle(.plain)
+            NavigationLink(value: Nine23Route.coach) { linkCard("教练与今日解读", subtitle: "从已有数据理解今天", icon: "sparkles") }.buttonStyle(.plain)
+            NavigationLink(value: Nine23Route.plan) { linkCard("睡眠计划", subtitle: "设置你的起床时间", icon: "bed.double") }.buttonStyle(.plain)
+            Button { sheet = .device } label: { linkCard("设备与数据同步", subtitle: "Apple Watch → 苹果健康 → 9点23", icon: "applewatch") }.buttonStyle(.plain)
+            Button { sheet = .settings } label: { linkCard("设置与高级功能", subtitle: "外观、备份、导出及原项目工具", icon: "gearshape") }.buttonStyle(.plain)
+            Nine23Card {
+                Text("关于 9点23").font(Nine23Style.heading)
+                Text("界面参考 WHOOP 的公开页面，数据来自苹果健康，恢复与睡眠计算基于 NOOP 现有近似模型。").font(Nine23Style.body).foregroundStyle(Nine23Style.secondary)
+                Link("开源项目与许可", destination: URL(string: "https://github.com/ryanbr/noop")!)
+                NavigationLink("查看功能支持情况", value: Nine23Route.capabilities)
+            }
+        }
+    }
+    @ViewBuilder private func destination(_ route: Nine23Route) -> some View {
+        switch route {
+        case let .metric(key, day): Nine23DetailView(key: key, dayKey: day, days: days)
+        case let .workout(id, day): Nine23WorkoutView(workout: days.first { $0.id == day }?.input.workouts.first { $0.id == id }, day: days.first { $0.id == day })
+        case let .monitor(day): Nine23MonitorView(dayKey: day, days: days)
+        case .trends: trends
+        case let .journal(day): Nine23JournalView(initialDay: day, days: days)
+        case .plan: Nine23PlanView()
+        case .coach: coach
+        case .capabilities: Nine23CapabilitiesView()
+        }
+    }
+    private var trends: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Nine23Style.section) {
+                Picker("指标", selection: $trendKey) { ForEach(["recovery", "sleep", "activity", "sdnn", "rhr"], id: \.self) { Text(Nine23Presentation.title($0)).tag($0) } }.pickerStyle(.menu)
+                Picker("时间范围", selection: $range) { Text("7 天").tag(7); Text("30 天").tag(30); Text("90 天").tag(90) }.pickerStyle(.segmented)
+                Nine23Card { Nine23TrendChart(days: days, key: trendKey, count: range, endDay: dayKey) { path.append(.metric(trendKey, $0)) } }
+                ForEach(days.filter { $0.id <= dayKey && Nine23Presentation.date($0.id) >= Calendar.current.date(byAdding: .day, value: -(range - 1), to: Calendar.current.startOfDay(for: date))! }.reversed()) { day in
+                    NavigationLink(value: Nine23Route.metric(trendKey, day.id)) { Nine23Card { Nine23ValueRow(title: day.id, value: Nine23Metrics.value(Nine23Presentation.metric(trendKey, in: day)), unit: trendKey == "sleep" ? "" : (day[trendKey]?.unit ?? "")) } }.buttonStyle(.plain)
+                }
+            }.padding(Nine23Style.page)
+        }.navigationTitle("趋势与报告").nine23Screen()
+    }
+    private var coach: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Nine23Style.section) {
+                Nine23Section(title: outlookTitle, caption: dayKey)
+                Nine23Card { Text(outlook).font(Nine23Style.body); Text("依据当前选择日期的记录生成。").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) }
+                ForEach(["sleep", "recovery", "activity"], id: \.self) { key in
+                    NavigationLink(value: Nine23Route.metric(key, dayKey)) { linkCard(Nine23Presentation.title(key), subtitle: selected?[key]?.explanation ?? "这一天尚无可读取记录。", icon: "chevron.right") }.buttonStyle(.plain)
+                }
+                NavigationLink { CoachView() } label: { linkCard("打开 AI 教练", subtitle: "使用原项目的可选 AI 配置与对话能力", icon: "bubble.left.and.bubble.right") }.buttonStyle(.plain)
+            }.padding(Nine23Style.page)
+        }.navigationTitle("今日解读").nine23Screen()
+    }
+    private var activities: some View {
+        Nine23Card {
+            HStack { Text("当天记录").font(Nine23Style.label); Spacer(); NavigationLink(value: Nine23Route.journal(dayKey)) { Image(systemName: "plus.circle.fill").font(Nine23Style.title) }.accessibilityLabel("添加日记") }
+            if let day = selected {
+                ForEach(Array(day.input.sleep.enumerated()), id: \.offset) { _, sleep in
+                    NavigationLink(value: Nine23Route.metric("sleep", dayKey)) {
+                        HStack(spacing: Nine23Style.gap) { Image(systemName: "moon.zzz.fill").foregroundStyle(Nine23Style.sleep); VStack(alignment: .leading) { Text(sleep.isMain ? "睡眠" : "午睡").font(Nine23Style.heading); Text("\(Nine23Presentation.time(sleep.start, zone: day.input.timeZone)) – \(Nine23Presentation.time(sleep.end, zone: day.input.timeZone))").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) }; Spacer(); Text(Nine23Presentation.duration(sleep.asleepMinutes)).font(Nine23Style.value); Image(systemName: "chevron.right").font(Nine23Style.caption) }
+                    }.buttonStyle(.plain)
+                    Divider().overlay(Nine23Style.line)
+                }
+                ForEach(day.input.workouts, id: \.id) { workout in
+                    NavigationLink(value: Nine23Route.workout(workout.id, dayKey)) {
+                        HStack(spacing: Nine23Style.gap) { Image(systemName: "figure.run").foregroundStyle(Nine23Style.activity); VStack(alignment: .leading) { Text(workout.name).font(Nine23Style.heading); Text(Nine23Presentation.time(workout.start, zone: day.input.timeZone)).font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) }; Spacer(); Text("\(Int(workout.minutes.rounded())) 分钟").font(Nine23Style.heading); Image(systemName: "chevron.right").font(Nine23Style.caption) }
+                    }.buttonStyle(.plain)
+                }
+                if day.input.sleep.isEmpty && day.input.workouts.isEmpty { emptyRecords }
+            } else { emptyRecords }
+        }
+    }
+    private var emptyRecords: some View { Text("同步后，睡眠与运动会按时间排列在这里。").font(Nine23Style.body).foregroundStyle(Nine23Style.secondary) }
+    private var dashboard: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Nine23Style.small), count: typeSize.isAccessibilitySize ? 1 : 2), spacing: Nine23Style.small) { ForEach(dashboardKeys, id: \.self) { key in metricTile(key) } }
+    }
+    private func metricTile(_ key: String) -> some View {
+        let metric = Nine23Presentation.metric(key, in: selected)
+        return NavigationLink(value: Nine23Route.metric(key, dayKey)) {
+            Nine23Card {
+                HStack { Text(Nine23Presentation.title(key)).font(Nine23Style.label); Spacer(); Image(systemName: "chevron.right").font(Nine23Style.label) }
+                Text(Nine23Metrics.value(metric)).font(Nine23Style.value).lineLimit(1).minimumScaleFactor(0.65)
+                Text(metric?.unit ?? "暂无数据").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary)
+                Nine23TrendChart(days: days, key: key, endDay: dayKey, compact: true).allowsHitTesting(false)
+            }
+        }.buttonStyle(.plain)
     }
     private var authorization: some View {
-        VStack(alignment: .leading, spacing: NoopVisualStyle.itemGap) {
-            Text("连接苹果健康").font(StrandFont.headline)
-            Text("使用 iPhone 与 Apple Watch 的睡眠、心率和运动记录。数据只保存在本机。").font(StrandFont.body)
-            Button("允许读取健康数据") { Task { await health.requestAuthorization(); await refresh() } }
-                .buttonStyle(.borderedProminent).foregroundStyle(NoopVisualStyle.canvas)
-        }.padding(NoopVisualStyle.cardPadding).background(NoopVisualStyle.surface, in: RoundedRectangle(cornerRadius: NoopVisualStyle.cardRadius))
+        Nine23Card { Text("连接苹果健康").font(Nine23Style.heading); Text("读取 Apple Watch 的睡眠、心率和运动记录。").font(Nine23Style.body); Button("允许读取健康数据") { Task { await health.requestAuthorization(); await refresh() } }.buttonStyle(.bordered) }
     }
-
-    private func domain(_ metric: AppleMetricResult) -> some View {
-        VStack(alignment: .leading, spacing: NoopVisualStyle.itemGap) {
-            HStack {
-                Label(metric.key == "recovery" ? "恢复" : metric.title, systemImage: metric.key == "sleep" ? "moon.zzz.fill" : metric.key == "recovery" ? "heart.fill" : "figure.walk")
-                    .font(StrandFont.headline)
-                Spacer()
-                Image(systemName: "chevron.right").font(StrandFont.caption)
-            }
-            HStack(alignment: .firstTextBaseline) {
-                Text(Nine23Metrics.value(metric)).font(StrandFont.title1).monospacedDigit()
-                if metric.key != "sleep" { Text(metric.unit).font(StrandFont.body) }
-            }.foregroundStyle(NoopVisualStyle.mint)
-            if metric.key == "sleep", let minutes = metric.value {
-                ProgressView(value: min(1, minutes / 480)).tint(NoopVisualStyle.mint)
-                Text("目标 8 小时 · 完成 \(Int((minutes / 480 * 100).rounded()))%").font(StrandFont.caption)
-            }
-            Text(Nine23Metrics.quality(metric.quality)).font(StrandFont.caption).foregroundStyle(NoopVisualStyle.secondaryText)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(NoopVisualStyle.cardPadding)
-        .background(NoopVisualStyle.surface, in: RoundedRectangle(cornerRadius: NoopVisualStyle.cardRadius))
+    private var syncFooter: some View {
+        VStack(spacing: Nine23Style.small) {
+            if let updated = selected?.input.updated { Text("更新于 \(Date(timeIntervalSince1970: updated).formatted(date: .abbreviated, time: .shortened))").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) }
+            Button(health.syncing ? "正在同步…" : "刷新所选日期") { Task { await refresh() } }.disabled(health.syncing).font(Nine23Style.body)
+        }.frame(maxWidth: .infinity)
     }
-    private func emptyDomain(_ key: String) -> some View {
-        VStack(alignment: .leading, spacing: NoopVisualStyle.itemGap) {
-            Text(key == "sleep" ? "实际睡眠" : key == "recovery" ? "恢复" : "运动时长").font(StrandFont.headline)
-            Text("—").font(StrandFont.title1)
-            Text("该日期尚未同步，或没有可读取的数据").font(StrandFont.caption)
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(NoopVisualStyle.cardPadding)
-            .background(NoopVisualStyle.surface, in: RoundedRectangle(cornerRadius: NoopVisualStyle.cardRadius))
-    }
-    private var summary: String {
-        guard let day = selected else { return "戴上 Apple Watch 后，先同步苹果健康。恢复估算需要至少 7 个有效历史日。" }
-        let sleep = day["sleep"]?.value.map { "睡眠 \(Int($0.rounded())) 分钟" } ?? "睡眠暂无数据"
-        return "\(sleep)，记录了 \(day.input.workouts.count) 次运动。" + (day["recovery"]?.value == nil ? "恢复估算仍需有效的当日 SDNN 与个人基线。" : "恢复估算可点开查看输入和依据。")
-    }
-
-    private var trends: some View {
+    private var devicePage: some View {
         List {
-            Picker("指标", selection: $trendKey) {
-                Text("睡眠").tag("sleep"); Text("恢复").tag("recovery"); Text("活动").tag("activity")
-            }.pickerStyle(.segmented)
-            Chart {
-                ForEach(days.suffix(30)) { day in
-                    if let value = day[trendKey]?.value { BarMark(x: .value("日期", day.id), y: .value("数值", value)).foregroundStyle(NoopVisualStyle.mint) }
-                }
-            }.frame(minHeight: 200).accessibilityLabel("最近 30 个已同步日期，缺失数据不补零")
-            Text("缺失数据保留为空；点开日期查看来源与统计窗口。").font(StrandFont.caption)
-            ForEach(days.reversed()) { day in
-                if let metric = day[trendKey] {
-                    NavigationLink { Nine23MetricDetail(metric: metric, input: day.input) } label: {
-                        LabeledContent(day.id, value: "\(Nine23Metrics.value(metric)) \(metric.key == "sleep" ? "" : metric.unit)")
-                    }
-                }
-            }
-        }
+            Section("数据链路") { Label("Apple Watch → 苹果健康 → 9点23", systemImage: "applewatch"); Text("只读健康数据。手表与组件接收手机计算的同一份结果。").font(Nine23Style.body) }
+            Section("同步") { LabeledContent("状态", value: health.syncing ? "同步中" : health.lastError == nil ? "等待刷新 / 已完成" : "上次同步失败"); if let error = health.lastError { Text(error) }; Button("允许读取健康数据") { Task { await health.requestAuthorization() } }; Button("同步最近 30 天") { date = Date(); Task { await refresh() } }.disabled(health.syncing) }
+            Section("恢复基线") { Text("至少 7 个有效历史日开始出分，14 日成熟。重新校准不会删除原始记录。"); Button("重新建立个人基线") { sheet = nil; recalibrate = true } }
+        }.navigationTitle("设备与同步")
     }
-    private var profile: some View {
+    private var dashboardEditor: some View {
         List {
-            Section("Apple Watch 模式") {
-                Label("9点23 · 本机计算", systemImage: "applewatch")
-                Text("健康数据只读，不回写导入结果。手机、手表和组件使用同一份指标计算结果。").font(StrandFont.body)
-                Button("同步最近 30 天") { date = Date(); Task { await refresh() } }.disabled(health.syncing)
-                Button("重新建立个人基线") { recalibrate = true }
-            }
-            Section("基础指标") {
-                if let day = selected {
-                    ForEach(day.metrics.filter { !["sleep", "activity", "recovery"].contains($0.key) }) { metric in
-                        NavigationLink { Nine23MetricDetail(metric: metric, input: day.input) } label: {
-                            LabeledContent(metric.title, value: Nine23Metrics.value(metric))
-                        }
-                    }
-                }
-                Text("日期：\(dayKey)").font(StrandFont.caption)
-            }
-            Section("更多") {
-                NavigationLink("睡眠分析") { SleepView() }
-                NavigationLink("教练") { CoachView() }
-                Button("高级功能与设置") { showAdvanced = true }
-                Text("9点23 基于 ryanbr/noop 开源项目修改。恢复与睡眠为仓库近似模型，仅用于个人趋势观察。").font(StrandFont.body)
-                Link("上游项目与许可", destination: URL(string: "https://github.com/ryanbr/noop")!)
-            }
-        }
-        .confirmationDialog("重新校准后将从今天开始积累基线，原始健康数据会保留。", isPresented: $recalibrate, titleVisibility: .visible) {
-            Button("重新建立基线") {
-                Baselines.recalibrateRecoveryBaselines()
-                Task { await load(); await publish() }
-            }
-        }
-    }
-    private func load() async {
-        do { days = try await Nine23Metrics.load(repo: repo); error = nil }
-        catch { self.error = "读取本机缓存失败：\(error.localizedDescription)" }
-    }
-    private func refresh() async {
-        _ = await health.syncApple(days: 30, through: date)
-        await load()
-        await publish()
-    }
-    private func publish() async {
-        await WidgetSnapshot.publish(from: model)
-        watch.send(await WatchSessionBridge.buildSnapshot(from: model))
-    }
-}
-
-private struct Nine23MetricDetail: View {
-    let metric: AppleMetricResult
-    let input: AppleHealthDay
-    var body: some View {
-        List {
-            Section {
-                Text("\(Nine23Metrics.value(metric)) \(metric.key == "sleep" ? "" : metric.unit)").font(StrandFont.title1).foregroundStyle(NoopVisualStyle.mint)
-                Text(Nine23Metrics.quality(metric.quality)).font(StrandFont.body)
-            }
-            Section("数据口径") {
-                LabeledContent("日期", value: metric.day)
-                LabeledContent("来源", value: metric.sources.isEmpty ? "未读取到样本" : metric.sources.joined(separator: "、"))
-                LabeledContent("时区", value: input.timeZone)
-                LabeledContent("统计开始", value: timestamp(metric.start))
-                LabeledContent("统计截止", value: timestamp(metric.end))
-                LabeledContent("更新时间", value: timestamp(metric.updated))
-                Text(metric.explanation).font(StrandFont.body)
-                Text(metric.algorithm).font(StrandFont.caption)
-            }
-            if metric.key == "sleep" || metric.key == "rest" {
-                Section("睡眠会话") {
-                    ForEach(Array(input.sleep.enumerated()), id: \.offset) { _, session in
-                        VStack(alignment: .leading, spacing: NoopVisualStyle.itemGap) {
-                            Text("\(session.isMain ? "主睡眠" : "午睡") · \(Int(session.asleepMinutes.rounded())) 分钟").font(StrandFont.headline)
-                            Text("\(timestamp(session.start)) – \(timestamp(session.end))").font(StrandFont.caption)
-                            Text("深睡 \(stageMinutes(session, "deep")) · REM \(stageMinutes(session, "rem")) · 核心 \(stageMinutes(session, "light")) · 未分期睡眠 \(Int(session.minutes("unspecified"))) 分钟").font(StrandFont.body)
-                            if !session.hasCompleteStages { Text("阶段或区间不完整，不计算睡眠估算。").font(StrandFont.caption) }
-                        }
-                    }
+            Section("选择首页指标") {
+                ForEach(Nine23Presentation.dashboardKeys, id: \.self) { key in
+                    Toggle(Nine23Presentation.title(key), isOn: Binding(get: { dashboardKeys.contains(key) }, set: { enabled in var keys = dashboardKeys; if enabled { keys.append(key) } else { keys.removeAll { $0 == key } }; dashboardRaw = keys.joined(separator: ",") }))
                 }
             }
-            if metric.key == "activity" {
-                Section("运动明细") {
-                    ForEach(input.workouts, id: \.id) { workout in
-                        VStack(alignment: .leading) {
-                            Text(workout.name).font(StrandFont.headline)
-                            Text("\(timestamp(workout.start)) · \(String(format: "%.1f", workout.minutes)) 分钟")
-                            Text("能量 \(workout.energy.map { String(format: "%.1f", $0) } ?? "—") kcal · 平均心率 \(workout.averageHR.map { String(format: "%.1f", $0) } ?? "—") 次/分")
-                            Text(workout.effort.map { "Apple 努力程度 \(String(format: "%.1f", $0)) / 10" } ?? "缺少 Apple 努力程度")
-                            Text(workout.source).font(StrandFont.caption)
-                        }.font(StrandFont.body)
-                    }
-                }
-            }
-            Section("HealthKit 样本") {
-                let samples = input.samples.filter { $0.key == metric.key || (metric.key == "recovery" && ["sdnn", "rhr"].contains($0.key)) }
-                Text("共 \(samples.count) 条。保留样本 UUID，可与苹果健康的显示所有数据核对。显示舍入不影响计算。").font(StrandFont.caption)
-                ForEach(Array(samples.prefix(200).enumerated()), id: \.offset) { _, sample in
-                    VStack(alignment: .leading) {
-                        Text("\(sample.source) · \(String(format: "%.2f", sample.value))").font(StrandFont.body)
-                        Text(timestamp(sample.start)).font(StrandFont.caption)
-                        Text(sample.id).font(StrandFont.caption).textSelection(.enabled)
-                    }
-                }
-                if samples.count > 200 { Text("仅展示前 200 条，完整样本保留在本机缓存中。").font(StrandFont.caption) }
-            }
-        }.navigationTitle(metric.title)
+            Section("排列顺序") { ForEach(dashboardKeys, id: \.self) { Text(Nine23Presentation.title($0)) }.onMove { indices, offset in var keys = dashboardKeys; keys.move(fromOffsets: indices, toOffset: offset); dashboardRaw = keys.joined(separator: ",") } }
+        }.environment(\.editMode, .constant(.active)).navigationTitle("自定义指标面板")
     }
-    private func stageMinutes(_ session: AppleSleepSession, _ stage: String) -> String {
-        let minutes = session.minutes(stage)
-        return session.hasCompleteStages || minutes > 0 ? String(Int(minutes.rounded())) : "—"
+    private func linkCard(_ title: String, subtitle: String, icon: String) -> some View {
+        Nine23Card { HStack(spacing: Nine23Style.gap) { Image(systemName: icon).font(Nine23Style.title); VStack(alignment: .leading, spacing: Nine23Style.small) { Text(title).font(Nine23Style.heading); Text(subtitle).font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary).multilineTextAlignment(.leading) }; Spacer(minLength: 0); Image(systemName: "chevron.right").font(Nine23Style.caption) } }
     }
-    private func timestamp(_ value: Double) -> String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.timeZone = TimeZone(identifier: input.timeZone)
-        f.dateFormat = "MM-dd HH:mm:ss"; return f.string(from: Date(timeIntervalSince1970: value))
+    private var vitalCount: Int { ["sdnn", "rhr", "resp", "spo2", "temperature"].filter { selected?[$0]?.value != nil }.count }
+    private var weekDays: [String] { (0..<7).reversed().map { AppleHealthDay.dayKey(Calendar.current.date(byAdding: .day, value: -$0, to: date)!) } }
+    private var outlookTitle: String { selected?["recovery"]?.value == nil ? "从今天开始，了解你的身体" : "你的今日状态" }
+    private var outlook: String {
+        guard let selected else { return "这一天尚未同步。下拉刷新，或选择已有记录的日期，查看睡眠、恢复和活动。" }
+        let sleep = selected["sleep"]?.value.map { "实际睡眠 \(Int($0) / 60) 小时 \(Int($0) % 60) 分。" } ?? "暂无睡眠记录。"
+        let recovery = selected["recovery"]?.value.map { "恢复估算 \(Int($0.rounded())) 分。" } ?? "恢复估算需要当日 SDNN 和至少 7 个有效历史日。"
+        return sleep + recovery + "已记录 \(selected.input.workouts.count) 次运动。"
     }
+    private func shift(_ offset: Int) { date = min(Date(), Calendar.current.date(byAdding: .day, value: offset, to: date)!) }
+    private func load() async { do { days = try await Nine23Metrics.load(repo: repo); error = nil } catch { self.error = "读取缓存失败：\(error.localizedDescription)" } }
+    private func refresh() async { _ = await health.syncApple(days: 30, through: date); await load(); await publish() }
+    private func publish() async { await WidgetSnapshot.publish(from: model); watch.send(await WatchSessionBridge.buildSnapshot(from: model)) }
 }
 #endif
