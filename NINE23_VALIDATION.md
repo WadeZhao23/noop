@@ -8,6 +8,7 @@
 - iOS simulator build: built and launched on iPhone 18 Pro Max / iOS 27.2.
 - macOS shared app: compiled; IntelligenceWatchRecoveryTests and WidgetSnapshotTests passed.
 - Local code-signature verification succeeded using `codesign --verify --deep --strict` with normal host keychain access.
+- Physical iPhone 17 Pro Max: after replacing the USB cable, the signed build installed successfully over the existing app without uninstalling it. Device inventory confirmed the display name `9点23`, existing bundle identifier, version `12.1.0` and build `438`. Launch succeeded, and a subsequent process query confirmed the main app and widget extension were running. No demonstration launch arguments were used.
 - Native UI interactions verified 今日 / 趋势 / 我的, sleep detail and back navigation, historical detail retaining the selected date, and a missing historical date showing empty values instead of today's metrics.
 - Light/dark appearance and accessibility text size inspected. An observed crowded date/header row was corrected to a vertical layout at accessibility sizes. Synthetic demonstration records are labeled in the UI.
 - Repository diff whitespace check passed. Generated Xcode project, private signing config, local databases, real health data and build products are excluded from commits.
@@ -20,7 +21,7 @@ The primary implementation notes and data/algorithm contracts are in [APPLE_WATC
 
 ## Pending device and account checks
 
-- The physical iPhone was discovered but reported **unavailable**. This run has not installed the update on the physical phone or Watch, verified preservation of the user's actual database, or compared real HealthKit samples with the Health app. Those checks need the connected/unlocked phone and paired Watch.
+- Physical phone installation and launch are complete. Preservation of the user's actual database contents, real HealthKit reconciliation, physical Watch installation and phone-to-Watch synchronization still need verification. A successful update installation alone does not establish those results.
 - GitHub HTTPS push preflight could not authenticate. Browser sign-in did not provide a Git credential. The implementation is committed on local branch `codex/nine23-apple-watch`; remote upload requires a connected GitHub integration or authenticated Git client. No successful remote push is claimed.
 - Simulator/synthetic tests establish software behavior, not physiological accuracy or equivalence to an official WHOOP score.
 
