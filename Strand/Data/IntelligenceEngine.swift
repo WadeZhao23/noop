@@ -3354,12 +3354,13 @@ final class IntelligenceEngine: ObservableObject {
             // Trailing baseline history = every earlier apple-health day with a usable value. Today is the
             // current row; the baseline is built from the days BEFORE it so it can't see its own value.
             let prior = rows[..<i]
-            let sdnnHistory = prior.compactMap { $0.avgHrv }
-            let rhrHistory = prior.compactMap { $0.restingHr.map(Double.init) }
-            let res = WatchRecovery.compute(todaySDNN: row.avgHrv,
+            let history = prior.map { WatchRecovery.Day(day: $0.day, sdnn: $0.avgSdnn ?? $0.avgHrv,
+                                                       restingHR: $0.restingHr.map(Double.init)) }
+            let res = WatchRecovery.compute(day: row.day, todaySDNN: row.avgSdnn ?? row.avgHrv,
                                             todayRHR: row.restingHr,
-                                            sdnnHistory: sdnnHistory,
-                                            rhrHistory: rhrHistory)
+                                            history: history,
+                                            hrvEpoch: Baselines.hrvBaselineEpoch(),
+                                            recoveryEpoch: Baselines.recoveryBaselineEpoch())
             out.append(WatchScoredDay(day: row.day, recovery: res.recovery, confidence: res.confidence))
         }
         return out

@@ -92,6 +92,7 @@ final class HealthKitBridge: ObservableObject {
     // MARK: - Types
 
     private var readTypes: Set<HKObjectType> {
+        if AppleHealthAdapter.modeEnabled { return AppleHealthAdapter.readTypes }
         var s = Set<HKObjectType>()
         for id in HealthKitBridge.quantityReadIds { if let t = HKObjectType.quantityType(forIdentifier: id) { s.insert(t) } }
         if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { s.insert(sleep) }
@@ -105,6 +106,7 @@ final class HealthKitBridge: ObservableObject {
     }
 
     private var writeTypes: Set<HKSampleType> {
+        if AppleHealthAdapter.modeEnabled { return [] }
         var s = Set<HKSampleType>()
         for id in HealthKitBridge.quantityWriteIds + HealthKitBridge.highResQuantityWriteIds
             where !HealthKitBridge.writeDenied.contains(id) {
@@ -332,6 +334,7 @@ final class HealthKitBridge: ObservableObject {
         // honours background delivery on `workoutType` at the quantity-type cadence is also unverified,
         // and unverifiable off-device: HealthKit has no simulator support.
         types.append(HKObjectType.workoutType())
+        if AppleHealthAdapter.modeEnabled { types = AppleHealthAdapter.readTypes.compactMap { $0 as? HKSampleType } }
 
         for type in types {
             let key = type.identifier
@@ -369,6 +372,7 @@ final class HealthKitBridge: ObservableObject {
     /// via the existing `sync(days:)` path. Re-aggregating the window (rather than the deltas alone)
     /// keeps every per-day average correct and idempotent — `sync` upserts are keyed by day.
     private func syncFromObserver(type: HKSampleType) async {
+        if AppleHealthAdapter.modeEnabled { await syncAppleFromObserver(type: type); return }
         guard auth == .authorized else { return }
         // #1578: counted before any early return, so the ratio of wakes to syncs is honest. Coalescing
         // cuts the work per wake, not the wakes — this is what shows whether the wake itself is the cost.
@@ -443,12 +447,13 @@ final class HealthKitBridge: ObservableObject {
             let q = HKAnchoredObjectQuery(
                 type: type, predicate: predicate,
                 anchor: priorAnchor, limit: HKObjectQueryNoLimit
-            ) { _, samples, _, newAnchor, _ in
+            ) { _, samples, deleted, newAnchor, error in
+                guard error == nil else { cont.resume(returning: (nil, nil)); return }
                 // Return the advanced anchor but do NOT persist it here: the caller commits it only after
                 // the ensuing sync has actually stored the window (@bhelm). Persisting in this callback,
                 // before ingestion was known to run, advanced the cursor past samples a later-bailed
                 // sync() never stored — silently losing days for the background/watch-only path.
-                let oldest = (samples ?? []).map { $0.startDate }.min()
+                let oldest = (deleted ?? []).isEmpty ? (samples ?? []).map { $0.startDate }.min() : oldestRelevant
                 cont.resume(returning: (oldest, newAnchor))
             }
             store.execute(q)
@@ -470,6 +475,86 @@ final class HealthKitBridge: ObservableObject {
         "hkAnchor.v1.\(type.identifier)"
     }
 
+    /// Anchors are scoped to the retained history window. Deletion UUIDs resolve back to their
+    /// original wake day; historical edits refresh only affected dates. No anchor moves on failure.
+    private func syncAppleFromObserver(type: HKSampleType) async {
+        guard auth == .authorized, !syncing, let cache = await repo.storeHandle() else { return }
+        do {
+            let inputs = try await cache.appleHealthInputs().map { try JSONDecoder().decode(AppleHealthDay.self, from: $0) }
+            let cal = Calendar.current
+            let recentStart = cal.date(byAdding: .day, value: -29, to: cal.startOfDay(for: Date()))!
+            let earliest = min(inputs.map { Date(timeIntervalSince1970: $0.start) }.min() ?? recentStart, recentStart)
+            let key = "nine23.anchor.v1.\(type.identifier).\(AppleHealthDay.dayKey(earliest))"
+            let prior: HKQueryAnchor? = UserDefaults.standard.data(forKey: key).flatMap {
+                try? NSKeyedUnarchiver.unarchivedObject(ofClass: HKQueryAnchor.self, from: $0)
+            }
+            let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+                HKQuery.predicateForSamples(withStart: earliest.addingTimeInterval(-2 * 86400), end: nil, options: []),
+                Self.notNoopAuthored
+            ])
+            let delta: ([HKSample], [HKDeletedObject], HKQueryAnchor?) = try await withCheckedThrowingContinuation { continuation in
+                store.execute(HKAnchoredObjectQuery(type: type, predicate: predicate, anchor: prior, limit: HKObjectQueryNoLimit) { _, samples, deleted, anchor, error in
+                    if let error { continuation.resume(throwing: error) }
+                    else { continuation.resume(returning: (samples ?? [], deleted ?? [], anchor)) }
+                })
+            }
+            var affected = Set<String>()
+            let deleted = Set(delta.1.map { $0.uuid.uuidString })
+            for input in inputs where input.samples.contains(where: { deleted.contains($0.id) }) { affected.insert(input.day) }
+            let knownDays = Set(inputs.map(\.day))
+            for sample in delta.0 {
+                affected.insert(AppleHealthDay.dayKey(sample.startDate))
+                affected.insert(AppleHealthDay.dayKey(sample.endDate))
+                if type == HKObjectType.categoryType(forIdentifier: .sleepAnalysis),
+                   let next = cal.date(byAdding: .day, value: 1, to: sample.endDate) {
+                    affected.insert(AppleHealthDay.dayKey(next))
+                }
+            }
+            if !delta.0.isEmpty || !delta.1.isEmpty {
+                guard await syncApple(days: 30) else { return }
+                let recentKey = AppleHealthDay.dayKey(recentStart)
+                for input in inputs where affected.contains(input.day) && knownDays.contains(input.day) && input.day < recentKey {
+                    guard await syncApple(days: 1, through: Date(timeIntervalSince1970: input.start)) else { return }
+                }
+            }
+            if let anchor = delta.2 {
+                let data = try NSKeyedArchiver.archivedData(withRootObject: anchor, requiringSecureCoding: true)
+                UserDefaults.standard.set(data, forKey: key)
+            }
+        } catch {
+            lastError = "苹果健康增量读取失败：\(error.localizedDescription)"
+            UserDefaults.standard.set(lastError, forKey: "nine23.health.lastError")
+        }
+    }
+
+    /// A selected historical date is refreshed explicitly; it never aliases the latest day.
+    @discardableResult
+    func syncApple(days: Int = 30, through selected: Date? = nil) async -> Bool {
+        guard auth == .authorized, !syncing else { return false }
+        syncing = true
+        defer { finishHealthPass() }
+        await requestNewAuthorizationTypesIfNeeded()
+        guard let cache = await repo.storeHandle() else { return false }
+        let cal = Calendar.current
+        let cutoff = selected.map { min(Date(), cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: $0))!) } ?? Date()
+        let lastDay = cal.startOfDay(for: selected ?? Date())
+        let start = cal.date(byAdding: .day, value: -(max(1, days) - 1), to: lastDay)!
+        do {
+            let inputs = try await AppleHealthAdapter.read(store: store, start: start, end: cutoff)
+            try await AppleHealthAdapter.persist(inputs, in: cache)
+            lastSync = Date(); lastSyncDays = selected == nil ? days : 0; lastError = nil
+            UserDefaults.standard.set(lastSync, forKey: "nine23.health.lastSync")
+            UserDefaults.standard.removeObject(forKey: "nine23.health.lastError")
+            await repo.refresh()
+            return true
+        } catch {
+            lastSyncDays = 0
+            lastError = "苹果健康同步失败：\(error.localizedDescription)"
+            UserDefaults.standard.set(lastError, forKey: "nine23.health.lastError")
+            return false
+        }
+    }
+
     // MARK: - Read → store
 
     /// Pull the last `days` of Apple Health into the on-device store under the `apple-health` source,
@@ -477,6 +562,7 @@ final class HealthKitBridge: ObservableObject {
     /// upserts keyed by day).
     @discardableResult
     func sync(days: Int = 30) async -> Bool {
+        if AppleHealthAdapter.modeEnabled { return await syncApple(days: days) }
         guard auth == .authorized else { return false }
         guard !syncing else {
             // A full sync includes write-back. If new strap data is landing concurrently, guarantee one
@@ -780,6 +866,7 @@ final class HealthKitBridge: ObservableObject {
     /// being dropped until the next app open.
     @discardableResult
     func writeBackAfterNewData() async -> Bool {
+        if AppleHealthAdapter.modeEnabled { return true }
         // A backfill routinely completes in a process that was never foregrounded (a background offload,
         // or a BLE relaunch) - the case this exists for. `auth` is still `.unknown` there, because the
         // only resume runs on scenePhase == .active, so without this the guard below would silently drop
@@ -833,6 +920,7 @@ final class HealthKitBridge: ObservableObject {
     ///
     /// Throws on save failure so the caller can decide whether to advance `lastSync`.
     private func writeBack(whoopStore: WhoopStore, days: Int = 14) async throws {
+        if AppleHealthAdapter.modeEnabled { return }
         guard auth == .authorized else { return }
         let now = Date()
         guard let fromDate = Calendar.current.date(byAdding: .day, value: -days, to: now) else { return }
