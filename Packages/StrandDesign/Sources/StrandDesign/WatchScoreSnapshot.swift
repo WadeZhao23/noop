@@ -49,12 +49,16 @@ public struct WatchScoreSnapshot: Codable, Equatable, Sendable {
     /// The watch prefers this for its recency label so it reads honestly ("Yesterday") even when the build
     /// is recent. Optional + decodes as nil when absent so older payloads on the wire stay compatible.
     public var scoreDay: String?
+    public var appleActivityMinutes: Double?
+    public var appleSleepMinutes: Double?
+    public var appleRecoveryQuality: String?
 
     public init(charge: Double?, chargeCalibrating: Bool,
                 effort: Double?, effortCalibrating: Bool,
                 rest: Double?, restCalibrating: Bool,
                 hr: Int?, sleepSummary: String, asOf: Date,
-                scoreDay: String? = nil) {
+                scoreDay: String? = nil, appleActivityMinutes: Double? = nil,
+                appleSleepMinutes: Double? = nil, appleRecoveryQuality: String? = nil) {
         self.charge = charge
         self.chargeCalibrating = chargeCalibrating
         self.effort = effort
@@ -65,6 +69,9 @@ public struct WatchScoreSnapshot: Codable, Equatable, Sendable {
         self.sleepSummary = sleepSummary
         self.asOf = asOf
         self.scoreDay = scoreDay
+        self.appleActivityMinutes = appleActivityMinutes
+        self.appleSleepMinutes = appleSleepMinutes
+        self.appleRecoveryQuality = appleRecoveryQuality
     }
 
     // MARK: - Shared app group transport

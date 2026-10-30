@@ -42,6 +42,23 @@ struct NOOPWidgetView: View {
     private var snap: WidgetSnapshot { entry.snapshot }
 
     var body: some View {
+        if snap.appleDay != nil { appleSummary } else { legacyBody }
+    }
+
+    private var appleSummary: some View {
+        VStack(alignment: .leading, spacing: NoopVisualStyle.itemGap) {
+            Text("9点23").font(StrandFont.headline)
+            Text("恢复 \(snap.recovery.map(String.init) ?? "—") · \(snap.appleRecoveryQuality ?? "暂无数据")").font(StrandFont.body)
+            if family != .accessoryCircular && family != .accessoryInline {
+                Text("睡眠 \(snap.appleSleepMinutes.map { String(Int($0.rounded())) } ?? "—") 分钟").font(StrandFont.caption)
+                Text("运动 \(snap.appleActivityMinutes.map { String(Int($0.rounded())) } ?? "—") 分钟").font(StrandFont.caption)
+                Text(snap.appleDay ?? "等待同步").font(StrandFont.caption)
+                if Date().timeIntervalSince(snap.updated) > 6 * 3600 { Text("待更新").font(StrandFont.caption) }
+            }
+        }.foregroundStyle(StrandPalette.textPrimary)
+    }
+
+    @ViewBuilder private var legacyBody: some View {
         switch family {
         case .accessoryCircular:
             recoveryGauge
@@ -84,7 +101,7 @@ struct NOOPWidgetView: View {
         var parts: [String] = []
         if let r = snap.recovery { parts.append("Charge \(r)%") }
         if let b = snap.bpm { parts.append("\(b) bpm") }
-        return parts.isEmpty ? "NOOP" : parts.joined(separator: " · ")
+        return parts.isEmpty ? "9点23" : parts.joined(separator: " · ")
     }
 
     // MARK: - Lock Screen accessories
@@ -231,7 +248,7 @@ struct NOOPWidgetView: View {
 
     private var headerRow: some View {
         HStack {
-            Text("NOOP")
+            Text("9点23")
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(StrandPalette.textSecondary)
             Spacer()
@@ -430,7 +447,7 @@ struct NOOPWidget: Widget {
                     .background(StrandPalette.surfaceBase)
             }
         }
-        .configurationDisplayName("NOOP")
+        .configurationDisplayName("9点23")
         .description("Charge, Effort and Rest as score rings, plus live HR and strap battery at a glance.")
         .supportedFamilies([
             .systemSmall, .systemMedium, .systemLarge,

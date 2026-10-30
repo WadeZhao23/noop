@@ -582,61 +582,61 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ladung veraltet, zuletzt synchronisiert %@. Öffne NOOP auf dem iPhone."
+            "value": "Ladung veraltet, zuletzt synchronisiert %@. Öffne 9点23 auf dem iPhone."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Charge out of date, last synced %@. Open NOOP on iPhone."
+            "value": "Charge out of date, last synced %@. Open 9点23 on iPhone."
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carga desatualizada, última sincronização %@. Abra o NOOP no iPhone."
+            "value": "Carga desatualizada, última sincronização %@. Abra o 9点23 no iPhone."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Заряд устарел, последняя синхронизация %@. Откройте NOOP на iPhone."
+            "value": "Заряд устарел, последняя синхронизация %@. Откройте 9点23 на iPhone."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carga fuera de la fecha, última sincronizada %1$@. Abrir NOOP en iPhone."
+            "value": "Carga fuera de la fecha, última sincronizada %1$@. Abrir 9点23 en iPhone."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Charge hors date, dernière synchronisation %1$@. Ouvrez NOOP sur iPhone."
+            "value": "Charge hors date, dernière synchronisation %1$@. Ouvrez 9点23 sur iPhone."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carica non aggiornata, ultima sincronizzazione %@. Apri NOOP su iPhone."
+            "value": "Carica non aggiornata, ultima sincronizzazione %@. Apri 9点23 su iPhone."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Energia nieaktualny, ostatnia synchronizacja %@. Otwórz NOOP na iPhonie."
+            "value": "Energia nieaktualny, ostatnia synchronizacja %@. Otwórz 9点23 na iPhonie."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "能量数据已过期，上次同步 %@。请在 iPhone 上打开 NOOP。"
+            "value" : "能量数据已过期，上次同步 %@。请在 iPhone 上打开 9点23。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "能量資料已過期，上次同步 %@。請在 iPhone 上開啟 NOOP。"
+            "value" : "能量資料已過期，上次同步 %@。請在 iPhone 上開啟 9点23。"
           }
         }
       }
@@ -1030,61 +1030,61 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP Ladung"
+            "value": "9点23 Ladung"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP Charge"
+            "value": "9点23 Charge"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carga de NOOP"
+            "value": "Carga de 9点23"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carica NOOP"
+            "value": "Carica 9点23"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carga NOOP"
+            "value": "Carga 9点23"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP Заряд"
+            "value": "9点23 Заряд"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP 能量"
+            "value": "9点23 能量"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP 能量"
+            "value": "9点23 能量"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Charge NOOP"
+            "value": "Charge 9点23"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP Energia"
+            "value": "9点23 Energia"
           }
         }
       }
@@ -1094,61 +1094,61 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP · auf iPhone öffnen"
+            "value": "9点23 · auf iPhone öffnen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP · open on iPhone"
+            "value": "9点23 · open on iPhone"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP · abrir no iPhone"
+            "value": "9点23 · abrir no iPhone"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP · откройте на iPhone"
+            "value": "9点23 · откройте на iPhone"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP · abierto en iPhone"
+            "value": "9点23 · abierto en iPhone"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP · ouvert sur iPhone"
+            "value": "9点23 · ouvert sur iPhone"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP · apri su iPhone"
+            "value": "9点23 · apri su iPhone"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP · otwórz na iPhonie"
+            "value": "9点23 · otwórz na iPhonie"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NOOP · 在 iPhone 上打开"
+            "value" : "9点23 · 在 iPhone 上打开"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NOOP · 在 iPhone 上開啟"
+            "value" : "9点23 · 在 iPhone 上開啟"
           }
         }
       }
@@ -1158,13 +1158,13 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. %@, %@, %@."
+            "value": "9点23. %@, %@, %@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. %@, %@, %@."
+            "value": "9点23. %@, %@, %@."
           }
         },
         "pt-PT": {
@@ -1176,13 +1176,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. %@, %@, %@."
+            "value": "9点23. %@, %@, %@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. %1$@, %2$@, %3$@."
+            "value": "9点23. %1$@, %2$@, %3$@."
           }
         },
         "fr": {
@@ -1194,25 +1194,25 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. %@, %@, %@."
+            "value": "9点23. %@, %@, %@."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. %@, %@, %@."
+            "value": "9点23. %@, %@, %@."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NOOP。%@、%@、%@。"
+            "value" : "9点23。%@、%@、%@。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NOOP。%@、%@、%@。"
+            "value" : "9点23。%@、%@、%@。"
           }
         }
       }
@@ -1222,61 +1222,61 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Noch keine Daten, öffne NOOP auf deinem iPhone zum Synchronisieren."
+            "value": "9点23. Noch keine Daten, öffne 9点23 auf deinem iPhone zum Synchronisieren."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. No data yet, open NOOP on your iPhone to sync."
+            "value": "9点23. No data yet, open 9点23 on your iPhone to sync."
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "NÃO. Ainda não há dados, abra o NOOP no teu iPhone para tincronizar."
+            "value": "NÃO. Ainda não há dados, abra o 9点23 no teu iPhone para tincronizar."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Данных пока нет, откройте NOOP на iPhone для синхронизации."
+            "value": "9点23. Данных пока нет, откройте 9点23 на iPhone для синхронизации."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Aún no hay datos, abra NOOP en su iPhone para sincronizar."
+            "value": "9点23. Aún no hay datos, abra 9点23 en su iPhone para sincronizar."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "- Oui. Pas encore de données, ouvrez NOOP sur votre iPhone pour synchroniser."
+            "value": "- Oui. Pas encore de données, ouvrez 9点23 sur votre iPhone pour synchroniser."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Ancora nessun dato, apri NOOP sul tuo iPhone per sincronizzare."
+            "value": "9点23. Ancora nessun dato, apri 9点23 sul tuo iPhone per sincronizzare."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Nie ma jeszcze danych. Otwórz NOOP na swoim iPhonie, aby przeprowadzić synchronizację."
+            "value": "9点23. Nie ma jeszcze danych. Otwórz 9点23 na swoim iPhonie, aby przeprowadzić synchronizację."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NOOP。暂无数据，请在 iPhone 上打开 NOOP 进行同步。"
+            "value" : "9点23。暂无数据，请在 iPhone 上打开 9点23 进行同步。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NOOP。暫無資料，請在 iPhone 上開啟 NOOP 進行同步。"
+            "value" : "9点23。暫無資料，請在 iPhone 上開啟 9点23 進行同步。"
           }
         }
       }
@@ -1286,61 +1286,61 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Werte veraltet, zuletzt synchronisiert %@. Öffne NOOP auf dem iPhone zum Aktualisieren."
+            "value": "9点23. Werte veraltet, zuletzt synchronisiert %@. Öffne 9点23 auf dem iPhone zum Aktualisieren."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Scores out of date, last synced %@. Open NOOP on iPhone to refresh."
+            "value": "9点23. Scores out of date, last synced %@. Open 9点23 on iPhone to refresh."
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "NÃO. Pontuações desatualizadas, última sincronização %@. Abra o NOOP no iPhone para atualizar."
+            "value": "NÃO. Pontuações desatualizadas, última sincronização %@. Abra o 9点23 no iPhone para atualizar."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Показатели устарели, последняя синхронизация %@. Откройте NOOP на iPhone, чтобы обновить."
+            "value": "9点23. Показатели устарели, последняя синхронизация %@. Откройте 9点23 на iPhone, чтобы обновить."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Resultados fuera de la fecha, último sincronizado %1$@. Abra NOOP en iPhone para refrescarse."
+            "value": "9点23. Resultados fuera de la fecha, último sincronizado %1$@. Abra 9点23 en iPhone para refrescarse."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "- Oui. Les scores sont dépassés, le dernier %1$@ synchronisé. Ouvrez NOOP sur iPhone pour vous rafraîchir."
+            "value": "- Oui. Les scores sont dépassés, le dernier %1$@ synchronisé. Ouvrez 9点23 sur iPhone pour vous rafraîchir."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Punteggi non aggiornati, ultima sincronizzazione %@. Apri NOOP su iPhone per aggiornare."
+            "value": "9点23. Punteggi non aggiornati, ultima sincronizzazione %@. Apri 9点23 su iPhone per aggiornare."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP. Wyniki nieaktualne, ostatnia synchronizacja %@. Otwórz NOOP na iPhonie, aby odświeżyć."
+            "value": "9点23. Wyniki nieaktualne, ostatnia synchronizacja %@. Otwórz 9点23 na iPhonie, aby odświeżyć."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NOOP。评分已过期，上次同步 %@。请在 iPhone 上打开 NOOP 以刷新。"
+            "value" : "9点23。评分已过期，上次同步 %@。请在 iPhone 上打开 9点23 以刷新。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NOOP。評分已過期，上次同步 %@。請在 iPhone 上開啟 NOOP 以重新整理。"
+            "value" : "9点23。評分已過期，上次同步 %@。請在 iPhone 上開啟 9点23 以重新整理。"
           }
         }
       }
@@ -1350,61 +1350,61 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine Daten, öffne NOOP auf dem iPhone"
+            "value": "Keine Daten, öffne 9点23 auf dem iPhone"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No data, open NOOP on iPhone"
+            "value": "No data, open 9点23 on iPhone"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sem dados, abra o NOOP no iPhone"
+            "value": "Sem dados, abra o 9点23 no iPhone"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Нет данных, откройте NOOP на iPhone"
+            "value": "Нет данных, откройте 9点23 на iPhone"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay datos, abra NOOP en iPhone"
+            "value": "No hay datos, abra 9点23 en iPhone"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pas de données, ouvrir NOOP sur iPhone"
+            "value": "Pas de données, ouvrir 9点23 sur iPhone"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun dato, apri NOOP su iPhone"
+            "value": "Nessun dato, apri 9点23 su iPhone"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Brak danych, otwórz NOOP na iPhonie"
+            "value": "Brak danych, otwórz 9点23 na iPhonie"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无数据，请在 iPhone 上打开 NOOP"
+            "value" : "无数据，请在 iPhone 上打开 9点23"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無資料，請在 iPhone 上開啟 NOOP"
+            "value" : "無資料，請在 iPhone 上開啟 9点23"
           }
         }
       }
@@ -1414,61 +1414,61 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOOP öffnen"
+            "value": "9点23 öffnen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open NOOP"
+            "value": "Open 9点23"
           }
         },
         "pt-PT": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir NOOP"
+            "value": "Abrir 9点23"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Открыть NOOP"
+            "value": "Открыть 9点23"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open NOOP"
+            "value": "Open 9点23"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir NOOP"
+            "value": "Ouvrir 9点23"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apri NOOP"
+            "value": "Apri 9点23"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otwórz NOOP"
+            "value": "Otwórz 9点23"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开 NOOP"
+            "value" : "打开 9点23"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟 NOOP"
+            "value" : "開啟 9点23"
           }
         }
       }

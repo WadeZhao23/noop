@@ -4,6 +4,10 @@ import Foundation
 /// via an App Group. The app writes it; the widget reads it. Keeping it tiny avoids any cross-process
 /// database access — the widget never opens SQLite.
 public struct WidgetSnapshot: Codable, Equatable {
+    public var appleDay: String?
+    public var appleActivityMinutes: Double?
+    public var appleSleepMinutes: Double?
+    public var appleRecoveryQuality: String?
     public var recovery: Int?    // Charge (0–100)
     public var bpm: Int?
     public var batteryPct: Int?

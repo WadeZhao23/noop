@@ -100,7 +100,7 @@ struct BodyVitalReading: Identifiable {
         case .noopComputed:
             // Live pipeline stores ±°C vs personal baseline (#622) — not absolute wrist °C.
             if key == "skin" { return String(localized: "vs baseline") }
-            return String(localized: "NOOP computed")
+            return String(localized: "9点23 computed")
         case .appleHealth:
             return String(localized: "Apple Health")
         case .localCache:

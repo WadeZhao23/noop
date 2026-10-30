@@ -392,7 +392,7 @@ struct SleepView: View {
         // tombstone, so only it gets the "won't detect ... again" wording. (#65 banner honesty.)
         let message = banner.snapshot.session.userEdited
             ? String(localized: "Sleep deleted.")
-            : String(localized: "Sleep deleted. NOOP won't detect sleep between \(clockTime(banner.displayStart)) and \(clockTime(banner.windowEnd)) again.")
+            : String(localized: "Sleep deleted. 9点23 won't detect sleep between \(clockTime(banner.displayStart)) and \(clockTime(banner.windowEnd)) again.")
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: "moon.zzz")
                 .font(.system(size: 14, weight: .semibold))

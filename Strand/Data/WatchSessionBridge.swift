@@ -120,11 +120,29 @@ final class WatchSessionBridge: NSObject, ObservableObject {
             || last.restCalibrating != next.restCalibrating
             || last.sleepSummary != next.sleepSummary
             || last.scoreDay != next.scoreDay
+            || last.appleActivityMinutes != next.appleActivityMinutes
+            || last.appleSleepMinutes != next.appleSleepMinutes
+            || last.appleRecoveryQuality != next.appleRecoveryQuality
     }
 
     /// Build the snapshot off the app state. Pure read; no side effects. Split out so the wiring is easy
     /// to follow and the calibrating logic sits in one place.
     static func buildSnapshot(from model: AppModel) async -> WatchScoreSnapshot {
+        #if os(iOS)
+        if AppleHealthAdapter.modeEnabled {
+            let day = await Nine23Metrics.today(repo: model.repo)
+            let recovery = day?["recovery"]
+            return WatchScoreSnapshot(charge: recovery?.value,
+                chargeCalibrating: recovery?.value == nil && recovery?.quality == .building,
+                effort: nil, effortCalibrating: false, rest: day?["rest"]?.value, restCalibrating: false,
+                hr: day?.input.values["hr"].map { Int($0.rounded()) },
+                sleepSummary: Nine23Metrics.value(day?["sleep"]),
+                asOf: Date(timeIntervalSince1970: day?.input.updated ?? 0), scoreDay: day?.id,
+                appleActivityMinutes: day?["activity"]?.value, appleSleepMinutes: day?["sleep"]?.value,
+                appleRecoveryQuality: recovery.map { Nine23Metrics.quality($0.quality) } ?? "暂无数据")
+        }
+        #endif
+
         // #911: anchor the way Today does, through the SHARED `Repository.widgetAnchor` the Home/Lock
         // widget and the iOS Live Activity now also use, so the wrist, the widget, the Live Activity and
         // Today always describe the same day. `Date()` is read here so the day rolls live as the phone

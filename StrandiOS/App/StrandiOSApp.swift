@@ -228,6 +228,7 @@ struct StrandiOSApp: App {
                 .environmentObject(model.intelligence)
                 .environmentObject(model.coach)
                 .environmentObject(health)
+                .environmentObject(watch)
                 .environmentObject(router)
                 .environmentObject(UpdateStore.shared)
                 .environmentObject(liftSession)
@@ -485,7 +486,7 @@ private struct iOSRootView: View {
             RootTabView(homeScreenQuickActionsEnabled:
                 demoBypass || (onboarded && acceptedTerms == Terms.currentVersion
                     && automaticLaunchSheetResolved))
-            if !onboarded && !demoBypass {
+            if !onboarded && !demoBypass && !AppleHealthAdapter.modeEnabled {
                 OnboardingWizard(onFinished: {
                     onboarded = true
                     // A brand-new user just saw the expectations in onboarding — don't also pop the
@@ -520,6 +521,10 @@ private struct iOSRootView: View {
         // combined terms+version update. Gate on terms being current, and re-check when they're
         // accepted (onAppear already fired before acceptance), so What's New shows right after.
         .onAppear {
+            if AppleHealthAdapter.modeEnabled {
+                onboarded = true
+                lastSeenChangelog = AppChangelog.currentVersion
+            }
             showWhatsNewIfDue()
             // Seed the current What's New into the Updates inbox (idempotent per version) so the bell
             // collects it even if the user dismisses the auto sheet.

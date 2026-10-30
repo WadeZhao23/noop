@@ -41,6 +41,22 @@ extension WidgetSnapshot {
     /// the rollover yet always describes today.
     @MainActor
     static func publish(from model: AppModel) async {
+        if AppleHealthAdapter.modeEnabled {
+            let day = await Nine23Metrics.today(repo: model.repo)
+            var snap = WidgetSnapshot(recovery: day?["recovery"]?.value.map { Int($0.rounded()) },
+                bpm: day?.input.values["hr"].map { Int($0.rounded()) }, batteryPct: nil, bonded: false,
+                updated: Date(timeIntervalSince1970: day?.input.updated ?? 0),
+                rest: day?["rest"]?.value.map { Int($0.rounded()) },
+                hrv: day?.input.values["sdnn"].map { Int($0.rounded()) },
+                restingHr: day?.input.values["rhr"].map { Int($0.rounded()) })
+            snap.appleDay = day?.id ?? ""
+            snap.appleActivityMinutes = day?["activity"]?.value
+            snap.appleSleepMinutes = day?["sleep"]?.value
+            snap.appleRecoveryQuality = day?["recovery"].map { Nine23Metrics.quality($0.quality) } ?? "暂无数据"
+            if snap != load() { snap.save(); WidgetCenter.shared.reloadAllTimelines() }
+            return
+        }
+
         await refreshWidgetPresence()
         let days = model.repo.days
         let now = Date()
@@ -128,6 +144,7 @@ extension WidgetSnapshot {
     /// after a local-day rollover also takes the full path so the score anchor advances with Today.
     @MainActor
     static func publishLive(from model: AppModel) async {
+        if AppleHealthAdapter.modeEnabled { await publish(from: model); return }
         let now = Date()
         guard var snap = load(), !liveUpdateRequiresFullBuild(previous: snap, now: now) else {
             await publish(from: model)

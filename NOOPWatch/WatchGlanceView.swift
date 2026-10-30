@@ -19,7 +19,7 @@ struct WatchGlanceView: View {
         // SCORES here; the active features run on the watch's own sensors + haptics on their pages.
         Group {
             if let snap = store.snapshot {
-                glance(snap)
+                if snap.appleRecoveryQuality != nil { appleGlance(snap) } else { glance(snap) }
             } else {
                 emptyState
             }
@@ -28,6 +28,20 @@ struct WatchGlanceView: View {
         .background(StrandPalette.surfaceBase.ignoresSafeArea())
         .onAppear { liveHR.start() }
         .onDisappear { liveHR.stop() }
+    }
+
+    private func appleGlance(_ snap: WatchScoreSnapshot) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: NoopVisualStyle.itemGap) {
+                Text("9点23").font(StrandFont.headline)
+                Text(snap.scoreDay ?? "等待手机同步").font(StrandFont.caption)
+                Text("恢复估算  \(snap.charge.map { String(Int($0.rounded())) } ?? "—")").font(StrandFont.title2).foregroundStyle(NoopVisualStyle.mint)
+                Text(snap.isStale() ? "待更新" : (snap.appleRecoveryQuality ?? "暂无数据")).font(StrandFont.caption)
+                Text("睡眠  \(snap.sleepSummary)").font(StrandFont.body)
+                Text("运动  \(snap.appleActivityMinutes.map { String(Int($0.rounded())) } ?? "—") 分钟").font(StrandFont.body)
+                asOf(snap)
+            }.padding(NoopVisualStyle.pagePadding)
+        }
     }
 
     // MARK: Synced state
@@ -128,7 +142,7 @@ struct WatchGlanceView: View {
             Image(systemName: "iphone.gen3")
                 .font(.system(size: 28))
                 .foregroundStyle(StrandPalette.textTertiary)
-            Text("Open NOOP on your iPhone to sync")
+            Text("Open 9点23 on your iPhone to sync")
                 .font(StrandFont.subhead)
                 .foregroundStyle(StrandPalette.textSecondary)
                 .multilineTextAlignment(.center)
