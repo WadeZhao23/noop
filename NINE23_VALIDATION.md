@@ -7,7 +7,8 @@
 - AppleHealthDayTests, WatchRecoveryTests and BehaviorInsightsTests: 37 tests passed, zero failures. The additional raw metric test verifies selected date, source, missing values and stale state. Recovery and sleep scoring formulas are unchanged.
 - macOS IntelligenceWatchRecoveryTests and WidgetSnapshotTests passed again with the expanded metric output.
 - The updated simulator app launched with explicitly labeled synthetic data. Dark and light homepage screenshots were captured; the generated black/white 9:23 icon was visually inspected. Final signature validation and IPA ZIP integrity checks passed.
-- Manual navigation, chart gestures, journal persistence and accessibility-size review for the expanded screens are **pending**: computer-use reports that the Mac is locked. Build success is not an interaction test.
+- Simulator interaction checks passed for sleep detail/back navigation, selected-day switching, source/sample detail and sheet dismissal, recovery detail/week switching, and journal answer persistence after reopening. The behavior-insight empty state correctly reports insufficient explicit control records. These checks used synthetic records only.
+- Chart point/drag selection and the expanded screens at accessibility text sizes remain **unverified**. The chart renders and changes period, but the simulator automation did not confirm selection feedback. Build success is not an interaction test.
 - Physical installation of **439 is pending**: the previously paired iPhone is currently unavailable. The installed build 438 described below has not been replaced. No uninstall or user-data reset was attempted.
 - The new deliverable is `build/nine23-delivery/reference-439/Nine23-reference-439.ipa`, with signed `Payload/NOOP.app`, icon, screenshots and build metadata beside it. The prior build remains available.
 
@@ -32,8 +33,8 @@ The primary implementation notes and data/algorithm contracts are in [APPLE_WATC
 
 ## Pending device and account checks
 
-- Physical phone installation and launch are complete. Preservation of the user's actual database contents, real HealthKit reconciliation, physical Watch installation and phone-to-Watch synchronization still need verification. A successful update installation alone does not establish those results.
-- GitHub HTTPS push preflight could not authenticate. Browser sign-in did not provide a Git credential. The implementation is committed on local branch `codex/nine23-apple-watch`; remote upload requires a connected GitHub integration or authenticated Git client. No successful remote push is claimed.
+- Physical phone installation and launch are complete for build 438 only. Build 439 remains pending: after reconnection, CoreDevice still reports the paired phone unavailable and the host USB inventory has no iPhone. The installation attempt failed before transferring the app. Preservation of the user's actual database contents, real HealthKit reconciliation, physical Watch installation and phone-to-Watch synchronization still need verification.
+- The connected personal GitHub integration published all seven implementation phases to [WadeZhao23/noop, codex/nine23-apple-watch](https://github.com/WadeZhao23/noop/tree/codex/nine23-apple-watch). Every phase's Git tree hash matches its local source; a fetch and final whole-tree comparison also passed. The build-439 source is published as `e332d0e4c9465209357b4b529a92ed8ed41da2ef` (identical tree to the original local `abd7abe4573ee45394a467963fa490d7e121f543`). Original local commit history is retained on `backup/nine23-local-20261030`; the working branch follows the published history. No direct Git HTTPS credential was installed.
 - Simulator/synthetic tests establish software behavior, not physiological accuracy or equivalence to an official WHOOP score.
 
 ## Device reconciliation procedure
