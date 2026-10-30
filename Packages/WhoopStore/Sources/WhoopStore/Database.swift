@@ -1103,6 +1103,14 @@ extension WhoopStore {
         migrator.registerMigration("v47-rr-whoop5-fill") { db in
             try db.execute(sql: WhoopStore.whoop5RrFillMigrationSQL)
         }
+        // Apple-specific cache: raw HealthKit identity/provenance and dated model inputs.
+        // Deliberately outside the shared .noopbak / Android schema contract.
+        migrator.registerMigration("v48-apple-health-day") { db in
+            try db.create(table: "appleHealthDay") { t in
+                t.column("day", .text).primaryKey()
+                t.column("payload", .blob).notNull()
+            }
+        }
         return migrator
     }
 }

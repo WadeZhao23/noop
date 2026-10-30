@@ -232,7 +232,10 @@ extension WhoopStore {
     /// happens to gate behind their own dedup toggle.
     @discardableResult
     public func upsertSleepSessions(_ sessions: [CachedSleepSession], deviceId: String) async throws -> Int {
-        try syncWrite { db in
+        try syncWrite { db in try Self.upsertSleepSessions(sessions, deviceId: deviceId, in: db) }
+    }
+
+    static func upsertSleepSessions(_ sessions: [CachedSleepSession], deviceId: String, in db: Database) throws -> Int {
             var n = 0
             for s in sessions {
                 if !s.userEdited, let existing = try Self.storedSleepSession(db, deviceId: deviceId, startTs: s.startTs),
@@ -268,7 +271,6 @@ extension WhoopStore {
                 n += db.changesCount
             }
             return n
-        }
     }
 
     /// The stored row at (deviceId, startTs), or nil when there is none yet — the completeness check

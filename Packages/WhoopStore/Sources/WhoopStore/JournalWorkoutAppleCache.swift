@@ -150,7 +150,10 @@ extension WhoopStore {
     /// Upsert workouts. Natural key (deviceId, startTs, sport). Returns rows changed.
     @discardableResult
     public func upsertWorkouts(_ rows: [WorkoutRow], deviceId: String) async throws -> Int {
-        try syncWrite { db in
+        try syncWrite { db in try Self.upsertWorkouts(rows, deviceId: deviceId, in: db) }
+    }
+
+    static func upsertWorkouts(_ rows: [WorkoutRow], deviceId: String, in db: Database) throws -> Int {
             var n = 0
             for r in rows {
                 try db.execute(sql: """
@@ -176,7 +179,6 @@ extension WhoopStore {
                 n += db.changesCount
             }
             return n
-        }
     }
 
     /// Delete one source's workouts of a given sport whose startTs is in [from, to]. Automatic
@@ -196,7 +198,10 @@ extension WhoopStore {
     /// Upsert Apple-Health daily aggregates. Natural key (deviceId, day). Returns rows changed.
     @discardableResult
     public func upsertAppleDaily(_ rows: [AppleDaily], deviceId: String) async throws -> Int {
-        try syncWrite { db in
+        try syncWrite { db in try Self.upsertAppleDaily(rows, deviceId: deviceId, in: db) }
+    }
+
+    static func upsertAppleDaily(_ rows: [AppleDaily], deviceId: String, in db: Database) throws -> Int {
             var n = 0
             for r in rows {
                 try db.execute(sql: """
@@ -218,7 +223,6 @@ extension WhoopStore {
                 n += db.changesCount
             }
             return n
-        }
     }
 
     // MARK: - Reads
