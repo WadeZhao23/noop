@@ -38,4 +38,24 @@ final class AppleHealthWindowTests: XCTestCase {
         let payloads = try await store.appleHealthInputs()
         XCTAssertEqual(payloads, [Data("old".utf8), Data("also-good".utf8)])
     }
+
+    func testWorkoutRevisionReplayAndDeletionReplaceInsteadOfAccumulating() async throws {
+        let store = try await WhoopStore.inMemory()
+        let first = WorkoutRow(startTs: 100, endTs: 1900, sport: "Walk", source: "apple-health", durationS: 1800,
+            energyKcal: 120, avgHr: 100, maxHr: 120, strain: nil, distanceM: nil, zonesJSON: nil, notes: nil, steps: nil)
+        let revised = WorkoutRow(startTs: 100, endTs: 2500, sport: "Walk", source: "apple-health", durationS: 2400,
+            energyKcal: 150, avgHr: 100, maxHr: 120, strain: nil, distanceM: nil, zonesJSON: nil, notes: nil, steps: nil)
+        for row in [first, revised, revised] {
+            try await store.replaceAppleHealthWindow(from: "2026-10-02", to: "2026-10-02", start: 0, end: 86400,
+                inputs: [:], daily: [], apple: [], points: [], sleep: [], workouts: [row])
+        }
+        let workouts = try await store.workouts(deviceId: "apple-health", from: 0, to: 86400, limit: 100)
+        XCTAssertEqual(workouts.count, 1)
+        XCTAssertEqual(workouts.first?.durationS, 2400)
+        XCTAssertEqual(workouts.first?.energyKcal, 150)
+        try await store.replaceAppleHealthWindow(from: "2026-10-02", to: "2026-10-02", start: 0, end: 86400,
+            inputs: [:], daily: [], apple: [], points: [], sleep: [], workouts: [])
+        let deleted = try await store.workouts(deviceId: "apple-health", from: 0, to: 86400, limit: 100)
+        XCTAssertTrue(deleted.isEmpty)
+    }
 }

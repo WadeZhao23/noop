@@ -91,4 +91,37 @@ final class AppleHealthDayTests: XCTestCase {
         XCTAssertEqual(results.first { $0.key == "vo2max" }?.quality, .missing)
         XCTAssertEqual(AppleMetricEngine.results(for: input, history: [], stale: true).first { $0.key == "weight" }?.quality, .stale)
     }
+
+    func testUnscoredRecoveryNeverClaimsASimplifiedEstimate() {
+        let history = history().map { AppleHealthDay(day: $0.day, timeZone: "UTC", start: 0, end: 1, updated: 1, values: ["sdnn": $0.sdnn!, "rhr": 60]) }
+        var input = AppleHealthDay(day: "2026-09-15", timeZone: "UTC", start: 0, end: 1, updated: 1, values: ["rhr": 59])
+        let missing = AppleMetricEngine.results(for: input, history: history).first { $0.key == "recovery" }!
+        XCTAssertNil(missing.value)
+        XCTAssertEqual(missing.quality, .missing)
+        XCTAssertTrue(missing.explanation.contains("当日缺少 SDNN"))
+        XCTAssertFalse(missing.explanation.contains("简化估算"))
+        input.values["sdnn"] = 53
+        let building = AppleMetricEngine.results(for: input, history: Array(history.suffix(3))).first { $0.key == "recovery" }!
+        XCTAssertNil(building.value)
+        XCTAssertEqual(building.quality, .building)
+        XCTAssertTrue(building.explanation.contains("有效历史基线不足"))
+        XCTAssertFalse(building.explanation.contains("简化估算"))
+    }
+
+    func testCompleteNightNapAndWorkoutProduceReconciledDailyTotals() {
+        let samples = [sample("night", "2026-10-01T22:00:00Z", "2026-10-02T06:00:00Z", 3),
+                       sample("duplicate-interval", "2026-10-01T23:00:00Z", "2026-10-02T04:00:00Z", 3),
+                       sample("nap", "2026-10-02T14:00:00Z", "2026-10-02T14:30:00Z", 1)]
+        let workouts = [AppleHealthWorkout(id: "walk", name: "Walk", source: "watch", start: 100, end: 1900, minutes: 30, energy: 120, averageHR: 100, maximumHR: 120, effort: nil),
+                        AppleHealthWorkout(id: "run", name: "Run", source: "watch", start: 3000, end: 5700, minutes: 45, energy: 400, averageHR: 140, maximumHR: 160, effort: 7)]
+        let input = AppleHealthDay(day: "2026-10-02", timeZone: "UTC", start: 0, end: 100000, updated: 99999, values: ["energy": 700], samples: samples, sleep: AppleSleepNormalizer.sessions(samples, calendar: calendar), workouts: workouts)
+        let results = AppleMetricEngine.results(for: input, history: [])
+        XCTAssertEqual(results.first { $0.key == "sleep" }?.value, 510)
+        XCTAssertNotNil(results.first { $0.key == "rest" }?.value)
+        XCTAssertEqual(results.first { $0.key == "activity" }?.value, 75)
+        XCTAssertEqual(results.first { $0.key == "energy" }?.value, 700)
+        XCTAssertNil(input.workouts[0].effort)
+        XCTAssertEqual(input.sleep.filter(\.isMain).count, 1)
+        XCTAssertEqual(input.sleep.filter { !$0.isMain }.first?.asleepMinutes, 30)
+    }
 }

@@ -189,9 +189,17 @@ public enum AppleMetricEngine {
             (input.values["sdnn"] == nil ? .missing : (recovery.recovery == nil ? .building :
                 (!recovery.usesRestingHR ? .simplified : (recovery.validDays < 14 ? .building : .available))))
         let baseline = recovery.hrvBaseline.map { String(format: "%.1f", $0) } ?? "—"
+        let recoveryBasis: String
+        if input.values["sdnn"] == nil {
+            recoveryBasis = "当日缺少 SDNN，未生成恢复估算。"
+        } else if recovery.recovery == nil {
+            recoveryBasis = recovery.stale ? "历史基线已过期，需重新积累有效记录，未生成恢复估算。" : "有效历史基线不足，未生成恢复估算。"
+        } else {
+            recoveryBasis = recovery.usesRestingHR ? "使用 SDNN 与静息心率；静息心率按原模型取整，沿用原权重与映射。" : "简化估算：缺少静息心率或其有效基线，仅使用 SDNN。"
+        }
         add("recovery", "当日恢复估算", "分", recovery.recovery,
             "日均 SDNN 对比个人基线 \(baseline) ms；已接受 \(recovery.validDays) 个历史日，至少 7 日出分、14 日基线成熟。" +
-            (recovery.usesRestingHR ? "使用 SDNN 与静息心率；静息心率按原模型取整，沿用原权重与映射。" : "简化估算：缺少静息心率或其有效基线，仅使用 SDNN。") +
+            recoveryBasis +
             "这是仓库近似模型，不是 WHOOP 官方分数。", quality: quality,
             sources: Array(Set(input.samples.filter { ["sdnn", "rhr"].contains($0.key) }.map(\.source))).sorted(), algorithm: "WatchRecovery → RecoveryScorer / dated-v1")
         for (key, title, unit) in [("sdnn", "心率变异性 SDNN", "ms"), ("rhr", "静息心率", "次/分"),

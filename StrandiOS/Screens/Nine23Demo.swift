@@ -7,6 +7,8 @@ import StrandAnalytics
 enum Nine23Demo {
     static func seed(repo: Repository) async throws {
         guard CommandLine.arguments.contains("--nine23-demo"), let store = await repo.storeHandle() else { return }
+        // Fixtures are allowed only in a simulator, even when a physical Debug build is launched.
+        #if targetEnvironment(simulator)
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         var days: [AppleHealthDay] = []
@@ -55,14 +57,51 @@ enum Nine23Demo {
                 samples.append(.init(id: "synthetic-\(day)-workout-hr-\(n)", key: "hr", start: workoutStart + Double(n) * 60, end: workoutStart + Double(n) * 60 + 1, source: "Apple Watch · 演示", sourceID: "synthetic-watch", isWatch: true, value: value))
             }
             values["hr"] = heart.reduce(0, +) / Double(heart.count)
-            days.append(.init(day: day, timeZone: cal.timeZone.identifier, start: base,
+            var input = AppleHealthDay(day: day, timeZone: cal.timeZone.identifier, start: base,
                 end: min(Date(), end).timeIntervalSince1970, updated: Date().timeIntervalSince1970, values: values,
                 samples: samples, sleep: AppleSleepNormalizer.sessions(samples),
                 workouts: [.init(id: "synthetic-workout-\(day)", name: "户外步行", source: "Apple Watch · 演示",
                     start: workoutStart, end: workoutEnd, minutes: minutes, energy: minutes * 4.2,
-                    averageHR: workoutHeart.reduce(0, +) / Double(workoutHeart.count), maximumHR: workoutHeart.max(), effort: 4)]))
+                    averageHR: workoutHeart.reduce(0, +) / Double(workoutHeart.count), maximumHR: workoutHeart.max(), effort: 4)])
+            input.samples.removeAll { $0.end > input.end }
+            input.workouts.removeAll { $0.end > input.end }
+            for key in Array(input.values.keys) where !input.samples.contains(where: { $0.key == key }) {
+                input.values.removeValue(forKey: key)
+            }
+            let observedHeart = input.samples.filter { $0.key == "hr" }.map(\.value)
+            input.values["hr"] = observedHeart.isEmpty ? nil : observedHeart.reduce(0, +) / Double(observedHeart.count)
+            if CommandLine.arguments.contains("--nine23-demo-edge-cases") { applyEdgeCase(offset, to: &input) }
+            input.sleep = AppleSleepNormalizer.sessions(input.samples)
+            if offset == 0 && CommandLine.arguments.contains("--nine23-demo-stale") { input.updated -= 8 * 3600 }
+            days.append(input)
         }
         try await AppleHealthAdapter.persist(days, in: store)
+        #endif
+    }
+
+    /// Relative dates keep each failure mode reachable through the normal calendar UI.
+    private static func applyEdgeCase(_ offset: Int, to input: inout AppleHealthDay) {
+        switch offset {
+        case -1, -2:
+            let key = offset == -1 ? "rhr" : "sdnn"
+            input.values.removeValue(forKey: key)
+            input.samples.removeAll { $0.key == key }
+        case -3:
+            input.samples.removeAll { $0.id.hasSuffix("sleep-2") }
+            if let index = input.samples.firstIndex(where: { $0.key == "sleep" }) { input.samples[index].value = 1 }
+        case -4:
+            input.values = [:]; input.samples = []; input.workouts = []
+        case -5:
+            input.samples.append(.init(id: "synthetic-competing-sleep-\(input.day)", key: "sleep", start: input.start - 3600, end: input.start + 7 * 3600, source: "第三方睡眠 · 演示", sourceID: "synthetic-third-party", isWatch: false, value: 1))
+        case -6:
+            if var duplicate = input.samples.first(where: { $0.key == "sleep" }) {
+                duplicate.id += "-overlap"; input.samples.append(duplicate)
+            }
+            input.samples.append(.init(id: "synthetic-nap-\(input.day)", key: "sleep", start: input.start + 14 * 3600, end: input.start + 14.5 * 3600, source: "Apple Watch · 演示", sourceID: "synthetic-watch", isWatch: true, value: 1))
+        case -7:
+            if !input.workouts.isEmpty { input.workouts[0].effort = nil }
+        default: break
+        }
     }
 }
 #endif

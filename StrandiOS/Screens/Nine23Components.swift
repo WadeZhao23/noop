@@ -141,15 +141,25 @@ struct Nine23TrendChart: View {
                 if !compact { AxisMarks(values: .stride(by: .day, count: count > 7 ? 7 : 1)) { _ in AxisValueLabel(format: .dateTime.day()); AxisTick() } }
             }
             .chartYAxis { if !compact { AxisMarks(position: .leading) } }
-            .chartXSelection(value: $selection)
+            .nine23ChartSelection($selection)
             .frame(height: compact ? 45 : Nine23Style.chartHeight)
             .overlay { if points.isEmpty && !compact { Text("这段时间暂无记录").font(Nine23Style.body).foregroundStyle(Nine23Style.secondary) } }
             if !compact { Text("点选或拖动图表查看日期；缺失记录保留为空。").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) }
         }
+        .onChange(of: endDay) { _, _ in selection = nil }
+        .onChange(of: key) { _, _ in selection = nil }
+        .onChange(of: count) { _, _ in selection = nil }
     }
 }
 
 extension View {
+    /// Keep the last point after touch-up so the dated detail action stays reachable.
+    func nine23ChartSelection(_ selection: Binding<Date?>) -> some View {
+        chartXSelection(value: Binding(get: { selection.wrappedValue }, set: { value in
+            if let value { selection.wrappedValue = value }
+        }))
+    }
+
     func nine23Screen() -> some View {
         self.background(Nine23Style.canvas).foregroundStyle(Nine23Style.text)
             .toolbarBackground(Nine23Style.canvas, for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)

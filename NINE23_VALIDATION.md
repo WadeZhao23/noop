@@ -1,5 +1,12 @@
 # 9点23 validation — 2026-10-30
 
+## Synthetic functional review after build 439
+
+- At the user's request, physical installation is deferred. The existing signed package has not been replaced.
+- The [functional review](NINE23_FUNCTIONAL_REVIEW.md) records 30 days of synthetic input, native navigation/edge-state checks, 81 passing focused tests and the remaining UI limitations.
+- Corrected recovery explanations and home/detail minute rounding; retained chart selection after touch-up (gesture confirmation remains pending). Simulator fixtures now cover missing inputs, incomplete sleep, source conflicts, overlap, naps and missing workout effort, and cannot seed a physical device.
+- Final simulator build and the macOS shared-app tests succeeded. This development simulator product includes newer source than the previously packaged build 439.
+
 ## Reference UI update — build 439
 
 - Expanded native screens and public reference mapping: [NINE23_REFERENCE_UI.md](NINE23_REFERENCE_UI.md).

@@ -316,7 +316,7 @@ struct Nine23RootView: View {
     private var outlookTitle: String { selected?["recovery"]?.value == nil ? "从今天开始，了解你的身体" : "你的今日状态" }
     private var outlook: String {
         guard let selected else { return "这一天尚未同步。下拉刷新，或选择已有记录的日期，查看睡眠、恢复和活动。" }
-        let sleep = selected["sleep"]?.value.map { "实际睡眠 \(Int($0) / 60) 小时 \(Int($0) % 60) 分。" } ?? "暂无睡眠记录。"
+        let sleep = selected["sleep"]?.value == nil ? "暂无睡眠记录。" : "实际睡眠 \(Nine23Metrics.value(selected["sleep"]))。"
         let recovery = selected["recovery"]?.value.map { "恢复估算 \(Int($0.rounded())) 分。" } ?? "恢复估算需要当日 SDNN 和至少 7 个有效历史日。"
         return sleep + recovery + "已记录 \(selected.input.workouts.count) 次运动。"
     }

@@ -189,9 +189,9 @@ struct Nine23SleepChart: View {
                 if let selected { RuleMark(x: .value("时间", selected)).foregroundStyle(Nine23Style.text) }
             }.chartYScale(domain: ["清醒", "REM", "核心", "深睡", "未分期", "未知"].filter { label in session.segments.contains { Self.label($0.stage) == label } })
                 .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { value in AxisValueLabel { if let date = value.as(Date.self) { Text(Nine23Presentation.time(date.timeIntervalSince1970, zone: timeZone)) } } } }
-                .chartXSelection(value: $selected).frame(height: Nine23Style.chartHeight)
+                .nine23ChartSelection($selected).frame(height: Nine23Style.chartHeight)
             Text("拖动查看分期与时间").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary)
-        }
+        }.onChange(of: session.start) { _, _ in selected = nil }
     }
 }
 
@@ -214,10 +214,10 @@ struct Nine23HeartChart: View {
                 if let selected { RuleMark(x: .value("选择", selected)).foregroundStyle(Nine23Style.secondary) }
             }.chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { value in AxisValueLabel { if let date = value.as(Date.self) { Text(Nine23Presentation.time(date.timeIntervalSince1970, zone: zone)) } } } }
                 .chartLegend(compact ? .hidden : .visible).chartYScale(domain: .automatic(includesZero: false))
-                .chartXSelection(value: $selected).frame(height: compact ? 85 : Nine23Style.chartHeight)
+                .nine23ChartSelection($selected).frame(height: compact ? 85 : Nine23Style.chartHeight)
                 .overlay { if ordered.isEmpty { Text("暂无样本").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) } }
             if !compact { Text("保留采样间隔，未把缺失时段连接成连续测量。").font(Nine23Style.caption).foregroundStyle(Nine23Style.secondary) }
-        }
+        }.onChange(of: samples.first?.id) { _, _ in selected = nil }
     }
 }
 
